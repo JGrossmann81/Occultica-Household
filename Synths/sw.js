@@ -1,5 +1,5 @@
 /* Occultica Synths service worker: network first so updates show; the saved copy is used offline. */
-const CACHE = 'occ-synths-3';
+const CACHE = 'occ-synths-4';
 const FILES = ['./', 'index.html', 'style.css', 'ui.js', 'worklet.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('occ-synths') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

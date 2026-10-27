@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Occultica Synths</title><meta name="theme-color" content="#100626">
-<meta name="description" content="Twenty-three playable synthesizers in your browser.">
+<meta name="description" content="Six playable synthesizers in your browser: Minica, Fmica, Hammerica, Rhodica, Odyssica and Kormica.">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="stylesheet" href="style.css"></head>
 <body>
 <header>
@@ -11,7 +11,7 @@
   <section class="card" id="top">
     <div class="row sp"><div><h1 id="title">…</h1><p id="blurb" class="mu"></p></div>
       <div class="row"><label class="mu">Sound <select id="preset" aria-label="Sound preset"></select></label>
-      <button id="demo" aria-pressed="false">▶ Demo</button><button id="reset">Reset knobs</button></div></div>
+      <button id="demo" aria-pressed="false">▶ Demo</button><button id="reset">Reset knobs</button><button id="beep">Test beep</button></div></div>
     <div class="row"><div class="meter" aria-hidden="true"><i id="lvl"></i></div><span id="msg" class="mu" role="status">Tap a key (or press A, S, D, F… on your keyboard) to play.</span></div>
   </section>
   <section class="card" id="play">
@@ -22,6 +22,7 @@
       <button id="panic">Stop notes</button>
     </div>
     <div id="kb" role="group" aria-label="Piano keyboard"></div>
+    <p id="diag" class="mu small" role="status">Sound: not started yet.</p>
     <p class="mu small">Computer keys: A S D F G H J K L are the white keys, W E T Y U O P the black keys, Z and X move the octave. A MIDI keyboard works too in Chrome and Edge.</p>
   </section>
   <section id="params"></section>

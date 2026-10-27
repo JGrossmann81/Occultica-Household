@@ -28,6 +28,7 @@ function ensureAudio() {
     node.port.onmessage = e => {
       const d = e.data;
       if (d.writes) d.writes.forEach(([id, v]) => setValue(id, v, false));
+      if (d.peak != null) { UI.peakMax = Math.max(UI.peakMax || 0, d.peak); UI.msgs = (UI.msgs || 0) + 1; }
       if (d.peak != null && levelEl) levelEl.style.width = Math.min(100, Math.pow(d.peak, 0.6) * 100) + '%';
       if (d.error) say('Sound engine problem: ' + d.error.split('\n')[0], 1);
       
@@ -144,13 +145,25 @@ function gestureUnlock() {
   if (ctx && ctx.state === 'running') ['touchend', 'pointerup', 'click', 'keydown'].forEach(t => removeEventListener(t, gestureUnlock, true));
 }
 ['touchend', 'pointerup', 'click', 'keydown'].forEach(t => addEventListener(t, gestureUnlock, true));
+
+function beep() {
+  unlock(); ensureAudio().catch(() => { });
+  if (!ctx) { say('Sound could not start in this browser.', 1); return; }
+  const go = () => { try { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 440; g.gain.value = 0.2; o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 0.4); say('Beep sent. If you did not hear it, check the volume and the silent switch.'); } catch (e) { say('Beep failed: ' + e.message, 1); } };
+  if (ctx.state !== 'running') ctx.resume().then(go).catch(() => say('The browser blocked sound. Tap the page once more.', 1)); else go();
+}
+setInterval(() => {
+  const d = $('#diag'); if (!d) return;
+  if (!ctx) { d.textContent = 'Sound: not started yet (it starts on your first tap or key).'; return; }
+  d.textContent = 'Sound: ' + ctx.state + ' at ' + ctx.sampleRate + ' Hz · engine: ' + (loaded || 'none') + ' · synth output heard: ' + (UI.peakMax > 0.0005 ? 'yes' : 'not yet') + ' (' + (window.AudioWorkletNode ? 'worklet supported' : 'NO worklet support') + ')';
+}, 500);
 function init() {
   const nav = $('#nav'); IDS.forEach(id => { const b = el('button', '', OCC.engines[id].name); b.dataset.id = id; b.onclick = () => go(id); nav.appendChild(b); });
   const sv = restore(); if (sv && typeof sv.oct === 'number') UI.oct = Math.max(1, Math.min(6, sv.oct));
   renderKb(); bindKb(); addEventListener('resize', () => { const n = nOctaves(); if ($('#kb').children.length !== undefined) renderKb(); });
   $('#octd').onclick = () => setOct(UI.oct - 1); $('#octu').onclick = () => setOct(UI.oct + 1);
   $('#bend').oninput = e => post({ bend: +e.target.value }); $('#bend').onpointerup = e => { e.target.value = 0; post({ bend: 0 }); };
-  $('#mod').oninput = e => post({ mod: +e.target.value }); $('#panic').onclick = panic; $('#demo').onclick = toggleDemo;
+  $('#mod').oninput = e => post({ mod: +e.target.value }); $('#panic').onclick = panic; $('#beep').onclick = beep; $('#demo').onclick = toggleDemo;
   $('#reset').onclick = () => { const d = OCC.engines[UI.id]; d.specs.forEach((s, i) => { if (i > 0) { UI.values[i] = s.def; if (UI.ctl[i]) UI.ctl[i].update(s.def); } }); UI.values[0] = d.specs[0].def; UI.ctl[0].update(UI.values[0]); sendAll(); persist(); say('Knobs reset.'); };
   addEventListener('hashchange', () => go(location.hash.slice(1), false));
   // ensure the engine is loaded the first time anything is pressed
