@@ -1,7 +1,7 @@
 'use strict';
 const $ = s => document.querySelector(s);
 const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
-const IDS = ['minica', 'fmica', 'hammerica', 'rhodica', 'odyssica', 'kormica'];
+const IDS = Object.keys(OCC.engines);
 let ctx = null, node = null, ready = null, cur = null, unlocked = false, levelEl = $('#lvl');
 const UI = { values: {}, ctl: {} };
 const SAVE = 'occsynths.v1';
