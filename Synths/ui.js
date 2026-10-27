@@ -137,6 +137,13 @@ function go(id, push) {
   if (push !== false) history.replaceState(null, '', '#' + id);
   loaded = null; if (ready) ensureEngine();
 }
+
+/* iPhone: Safari only lets sound start from a finished tap (touchend / click), not from the first touch-down. Unlock on every such gesture until audio is running. */
+function gestureUnlock() {
+  unlock(); ensureAudio().then(() => { if (ctx && ctx.state !== 'running') return ctx.resume(); }).catch(() => { });
+  if (ctx && ctx.state === 'running') ['touchend', 'pointerup', 'click', 'keydown'].forEach(t => removeEventListener(t, gestureUnlock, true));
+}
+['touchend', 'pointerup', 'click', 'keydown'].forEach(t => addEventListener(t, gestureUnlock, true));
 function init() {
   const nav = $('#nav'); IDS.forEach(id => { const b = el('button', '', OCC.engines[id].name); b.dataset.id = id; b.onclick = () => go(id); nav.appendChild(b); });
   const sv = restore(); if (sv && typeof sv.oct === 'number') UI.oct = Math.max(1, Math.min(6, sv.oct));

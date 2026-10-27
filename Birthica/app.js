@@ -229,3 +229,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('visibilitychange', () => { if (document.hidden && S.playing) togglePlay(); });
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
 });
+
+/* iPhone: sound can only start from a finished tap; unlock on every touchend/click until running */
+(function () {
+  function g() { try { unlockIOS(); ensureAudio().then(() => { if (ctx && ctx.state !== 'running') return ctx.resume(); }).catch(() => { }); if (ctx && ctx.state === 'running') ['touchend', 'pointerup', 'click'].forEach(t => removeEventListener(t, g, true)); } catch (e) { } }
+  ['touchend', 'pointerup', 'click'].forEach(t => addEventListener(t, g, true));
+})();
