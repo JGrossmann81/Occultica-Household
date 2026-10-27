@@ -1,0 +1,39 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recordica Web</title><meta name="theme-color" content="#100626">
+<meta name="description" content="Record, import, sequence beats and mix in your browser. Export a WAV.">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="stylesheet" href="style.css"></head>
+<body>
+<header>
+  <div class="brand"><span class="logo">●</span><b>RECORDICA</b><small>web</small></div>
+  <div class="tp">
+    <button id="home" title="Go to start (Home)" aria-label="Go to start">⏮</button>
+    <button id="play" class="big" title="Play / stop (Space)">▶ Play</button>
+    <button id="rec" class="big rec" title="Record onto the armed track (R)">● Rec</button>
+    <div class="time" id="time" aria-live="off">1.1.0 · 0:00.0</div>
+  </div>
+  <div class="tp">
+    <label class="bpm">BPM <input id="bpm" type="number" min="40" max="240" value="100"></label>
+    <label class="chk"><input type="checkbox" id="metro"> Click</label>
+    <label class="chk"><input type="checkbox" id="count" checked> Count-in</label>
+    <label class="chk"><input type="checkbox" id="snap" checked> Snap</label>
+    <label class="chk"><input type="checkbox" id="loopOn"> Loop</label>
+    <label class="bpm">bars <input id="loopA" type="number" min="1" value="1"> – <input id="loopB" type="number" min="2" value="5"></label>
+  </div>
+  <div class="tp">
+    <button id="addT">+ Track</button>
+    <button id="imp">Import audio…</button><input type="file" id="file" accept="audio/*" multiple hidden>
+    <button id="exp">Export WAV</button>
+    <button id="help" aria-label="Help">?</button>
+  </div>
+</header>
+<div id="msg" role="status">Welcome. Press the red Rec button to record from your microphone (headphones recommended), or import audio.</div>
+<main>
+  <section id="tl">
+    <div id="heads"><div class="hh">Tracks</div></div>
+    <div id="scroll"><div id="rulerW"><div id="ruler"></div></div><div id="lanes"></div><div id="ph"></div></div>
+  </section>
+  <section id="beat" class="card"></section>
+  <section id="mixer" class="card"></section>
+</main>
+<dialog id="dlg"><div id="dbody"></div><button id="dclose">Close</button></dialog>
+<script src="app.js"></script></body></html>
