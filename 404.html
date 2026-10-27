@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Occultica Household</title>
+<style>body{background:#100626;color:#f4eaff;font:16px system-ui;padding:28px;text-align:center}a{color:#f0c46a}</style></head><body>
+<h1>Looking for the right page…</h1><p id="m">One moment.</p>
+<script>
+/* Links are case-sensitive on this host. Fix a wrongly-capitalised link (e.g. all lowercase) and carry on. */
+(function(){
+  var apps=['Healthica','Hortica','Saturnica','Chorica','Backpackica','Campica','Roadtripica','Birthica','Recordica'];
+  var base='/Occultica-Household/', p=location.pathname.toLowerCase(), want='/occultica-household/';
+  var target=base;
+  if(p.indexOf(want)===0){
+    var rest=p.slice(want.length).replace(/^\/+/,'');
+    var seg=rest.split('/')[0];
+    for(var i=0;i<apps.length;i++){ if(apps[i].toLowerCase()===seg){ target=base+apps[i]+'/'; break; } }
+  }
+  if(location.pathname!==target){ location.replace(target+location.search+location.hash); }
+  else document.getElementById('m').innerHTML='That page was not found. <a href="'+base+'">Go to the Occultica Household home page</a>.';
+})();
+</script></body></html>
