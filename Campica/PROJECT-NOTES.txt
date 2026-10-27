@@ -1,0 +1,24 @@
+CAMPICA - PROJECT NOTES
+=======================
+Tabs: Find, Trips, Plan, Saved, Camp 101.
+Data: curated campgrounds in four packs (Northern CA, Central CA, Southern CA, Western US and national parks), 49 trip ideas, 92 Camp 101 guides.
+
+HOW IT IS BUILT
+- Plain HTML, CSS and JavaScript. No framework, no CDN, no account, no server. Everything is saved on the phone (localStorage plus IndexedDB for photos and cached lookups).
+- A shared "Occultica shell" (theme, tabs, sheets, units, backup, household link, offline service worker) is the same in all three new apps. App code lives in js/NN-name.js; data packs live in data/*.js.
+- Offline: a service worker caches every file after the first visit. Online-only features (map search, weather, place search, routing) say so, use the last cached copy, and never block the screen.
+- Free services used, with no keys: Open-Meteo (weather), Nominatim (place search), Overpass (OpenStreetMap lookups), OSRM demo router (driving routes). Each is called once per tap and cached. The OSRM demo and Overpass are volunteer servers, fine for personal use, not guaranteed.
+- Household link: each app publishes a small summary (see occ-link.js) that the Occultica Household launcher reads. Nothing leaves the phone.
+
+DATA RULES USED
+- Nothing was filled in from memory when it could be left blank. Unverified fields are null and the screen says "check with the source" with the official link. Each record carries src and asof where a source was read. The SOURCES-*.md files beside each data pack (kept in the project, not shipped) list every page read.
+- The research tools hit rate limits during the build, so several packs are smaller than planned. See "KNOWN GAPS
+- 729 curated campgrounds in total (CA 206, UT 86, CO 54, NV 44, AZ 43, NM 33, TX 25, WY 20, plus Midwest, Southeast, Northeast; no duplicate ids). About 559 have a map position (318 flagged approximate: a park or village pin, not the campground itself); 484 have a nightly fee and 573 a phone. Many fees/coords come from third-party mirrors (Outdoorithm, Campflare, Campendium) when official pages were unreachable, and each record says so. 95 trip ideas and 92 Camp 101 guides are not source-checked. Gaps: AK, HI, Pacific NW, NJ, DE, NE, KS (a park or village pin, not the campground itself). The rest list without a distance. The Find screen can also add live OpenStreetMap campsites near you.
+- Coverage by area: California is fairly broad (north coast, Shasta, Bay Area, Tahoe, Gold Country, Yosemite, Sequoia/Kings, Eastern Sierra, foothill lakes, Central Coast, Big Sur, Santa Barbara to San Diego, mountains and deserts). Still missing in California: Auburn SRA, Camp Richardson, Lake Berryessa, Tahoe NF/Plumas NF forest campgrounds, Santa Margarita/Nacimiento/San Antonio lakes, Shaver Lake, Big Basin (closed), most Los Padres NF, Mount Diablo's other campgrounds. Outside California: national parks only (Utah, Arizona, Colorado, Montana, Wyoming, Washington, Oregon, Nevada, Maine, Tennessee, North Carolina, Maryland, Virginia, South Dakota); Glacier extras and most non-park campgrounds are missing.
+- Many records mix official pages with third-party mirrors (Outdoorithm, Campflare, Campendium) for coordinates, fees and site counts; each record says which. Where sources conflicted the official page was used and the conflict is noted in the SOURCES-*.md file.
+- Fees are filled only where a page was read; many state-park standard fees are null or from a mirror. Always confirm fees, season and closures (wildfire, construction, snow) with the camp phone or the official page. Several are flagged "closed-check".
+- Reservation windows are NOT built in (could not be verified). The booking calculator uses the window you type or the camp's own listed text.
+- Trip ideas (49) and Camp 101 guides (92) were not source-checked; trip ideas say so on screen. Trip anchor coordinates are rounded and only used for "about N miles" distances.
+- To grow the data: each pack is a plain window.CAMPS.items.push list in data/camps-*.js (camps-zz-coords.js fills coordinates last). Add files and list them in Roadtripica's app.json "share" list to share them.
+
+- Added later: shared Places (OCC.places), on-phone 'Find on map' / typed coordinates for camps with no position, and coordinate overlays camps-zz-coords-{ca,ut,swm,east}.js (park-level pins from Wikipedia infoboxes; see SOURCES-coords-*.md). 170 camps still have no position. tools/refresh-data/ is a PC-side script to fill the rest from OpenStreetMap / Recreation.gov (live endpoints not tested from the sandbox).

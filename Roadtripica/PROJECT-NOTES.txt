@@ -1,0 +1,24 @@
+ROADTRIPICA - PROJECT NOTES
+===========================
+Tabs: Trip, Stops, Miles, Journal, Guide.
+Data: no big data packs. Places come live from OpenStreetMap, routes from the OSRM demo router, and Campica's campground packs are shared in (camps with a map position can be added as stops).
+
+HOW IT IS BUILT
+- Plain HTML, CSS and JavaScript. No framework, no CDN, no account, no server. Everything is saved on the phone (localStorage plus IndexedDB for photos and cached lookups).
+- A shared "Occultica shell" (theme, tabs, sheets, units, backup, household link, offline service worker) is the same in all three new apps. App code lives in js/NN-name.js; data packs live in data/*.js.
+- Offline: a service worker caches every file after the first visit. Online-only features (map search, weather, place search, routing) say so, use the last cached copy, and never block the screen.
+- Free services used, with no keys: Open-Meteo (weather), Nominatim (place search), Overpass (OpenStreetMap lookups), OSRM demo router (driving routes). Each is called once per tap and cached. The OSRM demo and Overpass are volunteer servers, fine for personal use, not guaranteed.
+- Household link: each app publishes a small summary (see occ-link.js) that the Occultica Household launcher reads. Nothing leaves the phone.
+
+DATA RULES USED
+- Nothing was filled in from memory when it could be left blank. Unverified fields are null and the screen says "check with the source" with the official link. Each record carries src and asof where a source was read. The SOURCES-*.md files beside each data pack (kept in the project, not shipped) list every page read.
+- The research tools hit rate limits during the build, so several packs are smaller than planned. See "KNOWN GAPS".
+
+KNOWN GAPS
+- Routes and stop searches need signal; saved routes and the last search are kept for offline use.
+- OSRM demo router gives no traffic and cannot avoid tolls/highways (those options only change the Google Maps links). Time zones are estimated from longitude.
+- OpenStreetMap hotel/food/fuel/charger details are volunteer-entered: hours and phone numbers can be missing or stale. The app says "call to confirm" and only treats simple opening-hours formats as "open now".
+- The Guide cards (about 55) and scenic-route notes are general guidance, not source-checked; road closures and conditions are not included at all (use the state transport department).
+- Photos are stored on the phone and are not included in the backup code.
+- Journal export, memory book print layout, .ics files and the share sheet were not tested on a real phone or printer.
+- No live location sharing (it needs a server).

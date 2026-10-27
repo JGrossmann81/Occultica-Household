@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Occultica Household</title>
+<meta name="description" content="Healthica, Hortica, Saturnica, Chorica, Backpackica, Campica, Roadtripica and Expandica in one app: body, garden, money, chores, trail, camping and road trips, linked and private.">
+<meta name="theme-color" content="#120e24">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Occultica">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<style>
+:root{--bg:#120e24;--panel:#1c1636;--panel2:#241d44;--line:#3a3160;--text:#f3eee2;--dim:#b9b2a3;--gold:#e2bf68;--gold2:#c9a24a;--green:#6faa6c;--violet:#9678dc;--red:#e06a5c;--warn:#e9a55a}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 Georgia,"Times New Roman",serif}
+main{max-width:560px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(30px + env(safe-area-inset-bottom))}
+h1{font-size:1.7rem;color:var(--gold);margin:0}.sub{color:var(--dim);font-size:.9rem;margin:2px 0 16px}
+.card{background:linear-gradient(180deg,var(--panel),#181330);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+.card.inner{background:var(--panel2);margin:8px 0}.ct{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;margin-bottom:8px;color:var(--gold)}.ct span{display:flex;gap:6px;align-items:center}
+.sm{font-size:.86rem}.dim{color:var(--dim)}.warn{color:var(--warn)}.gold{color:var(--gold)}
+.apps{display:grid;gap:10px;margin-bottom:12px}
+.app{display:flex;align-items:center;gap:14px;text-decoration:none;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px}
+.app:active{transform:scale(.99)}.app .g{width:54px;height:54px;flex:none;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;border:2px solid}
+.app b{font-size:1.15rem;display:block}.app .s{font-size:.85rem;color:var(--dim)}
+.btn{display:block;width:100%;background:transparent;color:var(--text);border:1.5px solid var(--gold2);border-radius:12px;padding:11px 14px;font:inherit;font-weight:600;cursor:pointer;margin-top:8px}
+.btn.gold{background:linear-gradient(180deg,#e2bf68,#c9a24a);color:#20170a;border-color:#e2bf68}
+.ev{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.88rem}.ev:last-child{border:0}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#2b2350;border:1px solid var(--gold2);color:var(--text);padding:10px 16px;border-radius:20px;opacity:0;transition:opacity .3s;pointer-events:none;font-size:.9rem;max-width:90vw}
+#toast.on{opacity:1}
+.foot{color:var(--dim);font-size:.78rem;text-align:center;margin-top:18px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Occultica Household</h1>
+  <div class="sub" id="date"></div>
+  <div class="apps">
+    <a class="app" href="Healthica/index.html"><span class="g" style="border-color:var(--gold);color:var(--gold)">⚕</span><span><b>Healthica</b><span class="s" id="s-healthica">Body: food, training, health</span></span></a>
+    <a class="app" href="Hortica/index.html"><span class="g" style="border-color:var(--green);color:var(--green)">🌿</span><span><b>Hortica</b><span class="s" id="s-hortica">Garden: plan, grow, harvest</span></span></a>
+    <a class="app" href="Saturnica/index.html"><span class="g" style="border-color:var(--violet);color:var(--violet)">🪐</span><span><b>Saturnica</b><span class="s" id="s-saturnica">Money: budget, debt, goals</span></span></a>
+    <a class="app" href="Chorica/index.html"><span class="g" style="border-color:#5fb3a8;color:#5fb3a8">🧹</span><span><b>Chorica</b><span class="s" id="s-chorica">Chores: check-offs and pocket money</span></span></a>
+    <a class="app" href="Backpackica/index.html"><span class="g" style="border-color:#c9a45c;color:#c9a45c">🥾</span><span><b>Backpackica</b><span class="s" id="s-backpackica">Trail: plan, pack, survive, log</span></span></a>
+    <a class="app" href="Campica/index.html"><span class="g" style="border-color:#f0b35a;color:#f0b35a">⛺</span><span><b>Campica</b><span class="s" id="s-campica">Camping: find, plan, book</span></span></a>
+    <a class="app" href="Roadtripica/index.html"><span class="g" style="border-color:#f0c46a;color:#f0c46a">🚐</span><span><b>Roadtripica</b><span class="s" id="s-roadtripica">Road trips: route, stops, miles</span></span></a>
+    <a class="app" href="../Expandica/index.html"><span class="g" style="border-color:#e8b04a;color:#e8b04a">🏡</span><span><b>Expandica</b><span class="s" id="s-expandica">Family land, cabin and stops</span></span></a>
+  </div>
+  <div id="rit"></div>
+  <section class="card" id="links"></section>
+  <section class="card"><div class="ct"><span>📅 Coming up</span></div><div id="evs" class="sm dim">Nothing yet. Open each app once so it can share its dates.</div>
+    <button class="btn" id="cal">Save household calendar file</button></section>
+  <p class="foot">Everything stays on this phone. Not medical, legal or financial advice.</p>
+</main>
+<div id="toast"></div>
+<script src="occ-link.js"></script>
+<script>
+(function () {
+  try { localStorage.setItem('occ.home', '1'); } catch (e) { }
+  const $ = s => document.querySelector(s), e = OCC.esc;
+  window.toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(window.toast.t); window.toast.t = setTimeout(() => t.classList.remove('on'), 2800); };
+  $('#date').textContent = new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+  function draw() {
+    $('#rit').innerHTML = OCC.ritualHTML('household');
+    const h = OCC.get('healthica'), g = OCC.get('hortica'), m = OCC.get('saturnica');
+    if (g && g.data) { const r = (g.data.ripe || []).map(x => x.n).slice(0, 3); $('#s-hortica').textContent = r.length ? 'Ripe now: ' + r.join(', ') : g.data.value30 ? 'Garden grew about $' + Math.round(g.data.value30) + ' this month' : 'Garden: plan, grow, harvest'; }
+    if (h && h.data && h.data.week) $('#s-healthica').textContent = 'Meals this week about $' + h.data.week.cost + (h.data.gardenRecipes && h.data.gardenRecipes.length ? ' · ' + h.data.gardenRecipes.length + ' garden recipes' : '');
+    if (m && m.data && m.data.groceryWeek) $('#s-saturnica').textContent = 'Grocery budget $' + Math.round(m.data.groceryWeek) + ' a week' + (h && h.data && h.data.week ? (h.data.week.cost <= m.data.groceryWeek ? ' · meal plan fits' : ' · meal plan over by $' + Math.round(h.data.week.cost - m.data.groceryWeek)) : '');
+    const c = OCC.get('chorica'); if (c && c.data) $('#s-chorica').textContent = (c.data.waiting ? c.data.waiting + ' to approve · ' : '') + 'owe the kids $' + Math.round(c.data.owed || 0);
+    const bk = OCC.get('backpackica'); if (bk && bk.data) $('#s-backpackica').textContent = (bk.data.trail ? bk.data.trail + ' · ' : '') + (bk.data.day ? 'day ' + bk.data.day + ' · ' : '') + (bk.data.milesTotal ? Math.round(bk.data.milesTotal) + ' mi so far' : 'planning');
+    const cp = OCC.get('campica'); if (cp && cp.data) $('#s-campica').textContent = (cp.data.next && cp.data.next.place ? 'Next: ' + cp.data.next.place + (cp.data.next.from ? ' · ' + cp.data.next.from : '') : (cp.data.saved || 0) + ' saved camps');
+    const rt = OCC.get('roadtripica'); if (rt && rt.data && rt.data.trip) $('#s-roadtripica').textContent = (rt.data.trip.name || 'Trip') + (rt.data.trip.days ? ' · ' + rt.data.trip.days + ' days' : '') + (rt.data.trip.miles ? ' · ' + Math.round(rt.data.trip.miles) + ' mi' : '');
+    const ex = OCC.get('expandica'); if (ex && ex.data) $('#s-expandica').textContent = (ex.data.owned || 0) + ' owned' + (ex.data.next ? ' · next: ' + ex.data.next.name : '');
+    const APPS4 = ['healthica', 'hortica', 'saturnica', 'chorica', 'backpackica', 'campica', 'roadtripica', 'expandica'], linked = APPS4.filter(a => OCC.get(a));
+    $('#links').innerHTML = `<div class="ct"><span>🔗 Linked</span><span class="sm dim">${linked.length} of ${APPS4.length}</span></div>` + APPS4.map(a => { const o = OCC.get(a); return `<div class="sm">${OCC.APPS[a].glyph} ${OCC.APPS[a].name}: ${o ? 'sharing, updated ' + OCC.ago(o.ts) : '<span class="warn">' + (a === 'saturnica' ? 'open it and finish setup to link' : a === 'chorica' ? 'open it and set up as the parent' : 'open it once to link') + '</span>'}</div>`; }).join('') +
+      '<div class="sm dim" style="margin-top:6px">The apps here share a small summary automatically: harvests, meal costs, budget numbers, chore money, trail progress, camping and road-trip dates. Never full health records.</div>';
+    const today = new Date().toISOString().slice(0, 10), ev = OCC.events().filter(x => x.d >= today).slice(0, 8);
+    if (ev.length) $('#evs').innerHTML = ev.map(x => `<div class="ev"><span>${OCC.APPS[x.app].glyph} ${e(x.t)}${x.who ? ' (' + e(x.who) + ')' : ''}</span><span class="dim">${new Date(x.d + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}${x.time ? ' ' + e(x.time) : ''}</span></div>`).join('');
+  }
+  $('#cal').onclick = () => { OCC.downloadCalendar(); toast('Calendar file saved. Open it to add the dates.'); };
+  draw(); document.addEventListener('visibilitychange', () => { if (!document.hidden) draw(); });
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => { });
+})();
+</script>
+</body>
+</html>

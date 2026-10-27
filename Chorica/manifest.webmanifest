@@ -1,0 +1,16 @@
+{
+ "name": "Chorica",
+ "short_name": "Chorica",
+ "description": "Chores, check-offs and pocket money for the family. Part of Occultica.",
+ "start_url": "./index.html",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#120e24",
+ "theme_color": "#120e24",
+ "icons": [
+  { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+  { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png" },
+  { "src": "img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+ ]
+}

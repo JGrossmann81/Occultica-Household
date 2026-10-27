@@ -1,0 +1,268 @@
+{
+ "version": "2026-10-13",
+ "updated": "2026-10-13",
+ "note": "Written from general medical knowledge and widely reported guidance, not from a live literature search. No doses. Peptide regulation and evidence change quickly, so confirm anything important with a pharmacist or doctor.",
+ "general": [
+  "Use products only from licensed pharmacies, with a prescriber who knows your full history. Online \"research use only\" vials have no purity or dose guarantee.",
+  "Start one thing at a time and wait to see how you feel before adding another. Many at once makes side effects impossible to trace.",
+  "Rotate injection sites, use new sterile supplies every time, and never share pens or needles.",
+  "Stop and get care for hives, swelling of the face or throat, trouble breathing, chest pain, a spreading red or hot injection site, fever, or severe belly pain.",
+  "Pregnancy, breastfeeding, cancer history, diabetes, thyroid disease or kidney disease all change the picture. Say so to your prescriber.",
+  "Athletes in tested sports: many peptides here are on the WADA prohibited list."
+ ],
+ "classes": {
+  "glp1": {
+   "label": "GLP-1 type (weight / blood sugar)",
+   "status": "Semaglutide, liraglutide and tirzepatide are FDA-approved prescription drugs for specific uses. Retatrutide and cagrilintide are still investigational. Compounded copies vary in quality.",
+   "summary": "Reduce appetite and slow stomach emptying. Large weight loss often includes some muscle, so protein and lifting matter.",
+   "watch": [
+    "Nausea, vomiting, constipation or loose stools, reflux, low energy.",
+    "Dehydration from vomiting or very low intake. It can hurt the kidneys.",
+    "Severe belly pain (gallbladder or pancreas) needs same-day care.",
+    "Losing weight very fast tends to take muscle with it.",
+    "Low blood sugar if combined with insulin or sulfonylureas."
+   ],
+   "train": [
+    "Lift 2 to 3 times a week. This is the best known way to keep muscle while the scale drops.",
+    "If nauseated or lightheaded, do a lighter session or a walk. Fuel with a little protein first."
+   ],
+   "fuel": [
+    "Aim for protein at every meal, even small ones. Many experts suggest roughly 1.2 to 1.6 g per kg a day while losing weight; ask your clinician for your number.",
+    "Small meals, eat slowly, stop when full. Add fiber and water if constipated."
+   ],
+   "relax": [
+    "Short walks after meals ease nausea and help digestion.",
+    "Sleep well. Poor sleep makes hunger and mood harder to manage."
+   ]
+  },
+  "ghs": {
+   "label": "Growth hormone releasing (GHRH or GHRP type)",
+   "status": "Tesamorelin is approved for a narrow medical use. Sermorelin was once approved and is now mostly compounded. Ipamorelin, CJC-1295, GHRP-2/6, hexarelin and oral MK-677 are not FDA-approved for general use.",
+   "summary": "Nudge the pituitary to release more growth hormone. Raises IGF-1. Evidence for body-composition and recovery benefits in healthy adults is limited.",
+   "watch": [
+    "Water retention, swollen hands or feet, tingling or numb fingers.",
+    "Raised blood sugar and insulin resistance over time, especially with MK-677.",
+    "Increased hunger (GHRP-6, MK-677), headache, flushing, dizziness.",
+    "Theoretical concern about feeding existing tumors. Avoid with active or recent cancer."
+   ],
+   "train": [
+    "Train as planned. Do not use it as a reason to skip rest days. Tendons adapt slower than muscles.",
+    "Keep a protein meal after training."
+   ],
+   "fuel": [
+    "A big sugary or high-carb snack close to the dose is often advised against, because high insulin blunts growth hormone release. Evidence is mixed. Follow your prescriber's timing.",
+    "Check fasting glucose with your clinician if you use these for months."
+   ],
+   "relax": [
+    "Growth hormone peaks during deep sleep, so protect your sleep: steady bedtime, dark room, no late screens.",
+    "A 3-minute Breathe session before bed helps the wind-down."
+   ]
+  },
+  "healing": {
+   "label": "Repair peptides (BPC-157, TB-500)",
+   "status": "Not FDA-approved. Evidence is mostly animal studies and a few small human reports. US regulators have restricted compounding of BPC-157, and rules have been shifting, so check current status. Prohibited by WADA.",
+   "summary": "Marketed for tendon, gut and soft-tissue repair. Human proof of benefit and long-term safety is thin.",
+   "watch": [
+    "Unknown long-term safety. Possible effects on blood-vessel growth are a theoretical concern with cancer risk.",
+    "Injection-site irritation, dizziness, nausea, flushing reported.",
+    "Product purity and identity are the biggest practical risk."
+   ],
+   "train": [
+    "Protect the injured area. Rehab with progressive loading (a physio can guide it) does more than any vial.",
+    "Train around the injury. Keep moving the rest of the body."
+   ],
+   "fuel": [
+    "Protein, vitamin C and enough total calories support tissue repair.",
+    "Collagen with vitamin C before rehab is a low-risk extra some people try."
+   ],
+   "relax": [
+    "Tissue repair happens at rest. Prioritize sleep and a gentle stretch or walk."
+   ]
+  },
+  "other": {
+   "label": "Other peptides",
+   "status": "Many other peptides (for tanning, cognition, anti-aging) are unapproved with little human safety data.",
+   "summary": "Not in Healthica's reference. Treat the lack of information as a reason to ask a pharmacist.",
+   "watch": [
+    "Unknown safety and quality.",
+    "Melanotan-type products can darken moles. Have your skin checked."
+   ],
+   "train": [
+    "Train as normal and notice any new symptoms."
+   ],
+   "fuel": [
+    "Eat protein and drink water. Keep a symptom note in the log."
+   ],
+   "relax": [
+    "Rest and sleep help you spot side effects early."
+   ]
+  }
+ },
+ "items": [
+  {
+   "cls": "glp1",
+   "names": [
+    "semaglutide",
+    "ozempic",
+    "wegovy",
+    "rybelsus"
+   ]
+  },
+  {
+   "cls": "glp1",
+   "names": [
+    "tirzepatide",
+    "zepbound",
+    "mounjaro"
+   ]
+  },
+  {
+   "cls": "glp1",
+   "names": [
+    "liraglutide",
+    "saxenda",
+    "victoza"
+   ]
+  },
+  {
+   "cls": "glp1",
+   "names": [
+    "retatrutide",
+    "cagrilintide",
+    "survodutide",
+    "dulaglutide",
+    "trulicity",
+    "exenatide"
+   ]
+  },
+  {
+   "cls": "ghs",
+   "sub": "ghrh",
+   "names": [
+    "cjc-1295",
+    "cjc1295",
+    "cjc",
+    "sermorelin",
+    "tesamorelin",
+    "egrifta",
+    "modified grf",
+    "mod grf"
+   ]
+  },
+  {
+   "cls": "ghs",
+   "sub": "ghrp",
+   "names": [
+    "ipamorelin",
+    "ghrp-2",
+    "ghrp-6",
+    "ghrp2",
+    "ghrp6",
+    "hexarelin"
+   ]
+  },
+  {
+   "cls": "ghs",
+   "sub": "oral",
+   "names": [
+    "mk-677",
+    "mk677",
+    "ibutamoren",
+    "nutrobal"
+   ]
+  },
+  {
+   "cls": "healing",
+   "names": [
+    "bpc-157",
+    "bpc157",
+    "bpc",
+    "body protection compound"
+   ]
+  },
+  {
+   "cls": "healing",
+   "names": [
+    "tb-500",
+    "tb500",
+    "thymosin beta",
+    "thymosin"
+   ]
+  },
+  {
+   "cls": "other",
+   "names": [
+    "melanotan",
+    "mt2",
+    "mt-2",
+    "ghk-cu",
+    "ghk",
+    "aod-9604",
+    "aod9604",
+    "semax",
+    "selank",
+    "epitalon",
+    "pt-141",
+    "kisspeptin",
+    "nad",
+    "ss-31"
+   ]
+  }
+ ],
+ "pairs": [
+  {
+   "a": "glp1",
+   "b": "glp1",
+   "level": "ask",
+   "text": "Two GLP-1 type medicines together duplicate each other and raise side-effect risk. Only with explicit prescriber direction."
+  },
+  {
+   "a": "ghs.ghrh",
+   "b": "ghs.ghrh",
+   "level": "ask",
+   "text": "Two growth-hormone-releasing hormones at once is doubling up. Ask your prescriber."
+  },
+  {
+   "a": "ghs.ghrp",
+   "b": "ghs.ghrp",
+   "level": "ask",
+   "text": "Two GHRP-type peptides at once is doubling up and can raise hunger, cortisol and water retention."
+  },
+  {
+   "a": "ghs.ghrh",
+   "b": "ghs.ghrp",
+   "level": "watch",
+   "text": "A GHRH plus a GHRP is a commonly discussed pairing. It stacks the effect and the side effects (water retention, tingling, glucose), so review it with a prescriber."
+  },
+  {
+   "a": "ghs.oral",
+   "b": "ghs",
+   "level": "watch",
+   "text": "MK-677 on top of an injectable growth hormone stimulant stacks growth hormone effects. Watch blood sugar, swelling and appetite."
+  },
+  {
+   "a": "ghs",
+   "b": "glp1",
+   "level": "watch",
+   "text": "Growth hormone can raise blood sugar and insulin resistance, which pulls against a GLP-1's goals. Keep an eye on glucose and ask your clinician."
+  },
+  {
+   "a": "healing",
+   "b": "ghs",
+   "level": "watch",
+   "text": "Both are growth-promoting. Limited data on combining them. Avoid if you have any cancer history."
+  },
+  {
+   "a": "healing",
+   "b": "healing",
+   "level": "watch",
+   "text": "BPC-157 with TB-500 is a popular pairing, but there are almost no human studies of the combination."
+  },
+  {
+   "a": "other",
+   "b": "*",
+   "level": "watch",
+   "text": "An unlisted peptide has an unknown interaction profile. Ask a pharmacist before combining it with others."
+  }
+ ]
+}

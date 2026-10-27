@@ -1,0 +1,27 @@
+BACKPACKICA - PROJECT NOTES
+===========================
+Tabs: Today, Trail, Plan, Pack, Survive, Log.
+Data: 26 trails (6 more in trails-more2.js: no coordinates, thin water/camp data, see SOURCES-more2.md) (new: Grand Canyon R2R and South Kaibab, Whitney, Four Pass, Teton Crest, Lost Coast, Northville-Placid, Zion West; they have no lat/lon, so find-me is unavailable there; mile data is partly guide-derived, see mileNote; PCT: 218 points; AT, JMT, CDT, Colorado Trail, Tahoe Rim, Arizona Trail, Long Trail, PNT outline, Wonderland, Rae Lakes, Timberline), 60 core survival cards, 71 medical/wildlife/weather cards, 16 foraging plants plus 4 dangerous-plant cards and a mushroom danger guide, 180 gear presets, 187 trail foods.
+
+HOW IT IS BUILT
+- Plain HTML, CSS and JavaScript. No framework, no CDN, no account, no server. Everything is saved on the phone (localStorage plus IndexedDB for photos and cached lookups).
+- A shared "Occultica shell" (theme, tabs, sheets, units, backup, household link, offline service worker) is the same in all three new apps. App code lives in js/NN-name.js; data packs live in data/*.js.
+- Offline: a service worker caches every file after the first visit. Online-only features (map search, weather, place search, routing) say so, use the last cached copy, and never block the screen.
+- Free services used, with no keys: Open-Meteo (weather), Nominatim (place search), Overpass (OpenStreetMap lookups), OSRM demo router (driving routes). Each is called once per tap and cached. The OSRM demo and Overpass are volunteer servers, fine for personal use, not guaranteed.
+- Household link: each app publishes a small summary (see occ-link.js) that the Occultica Household launcher reads. Nothing leaves the phone.
+
+DATA RULES USED
+- Nothing was filled in from memory when it could be left blank. Unverified fields are null and the screen says "check with the source" with the official link. Each record carries src and asof where a source was read. The SOURCES-*.md files beside each data pack (kept in the project, not shipped) list every page read.
+- The research tools hit rate limits during the build, so several packs are smaller than planned. See "KNOWN GAPS".
+
+KNOWN GAPS (be honest with yourself before relying on it)
+- Trail points: only some have latitude/longitude (PCT 12 of 218). The "find me on the trail" feature interpolates between points that have them, so it is rough on the PCT and on several other trails. About 120 town coordinates on the other trails are rounded estimates flagged "llApprox". Halfmile's PCT waypoint spreadsheet would fill the PCT coordinates.
+- Miles differ between guides by 0.5 to several miles (each trail's mileNote says which system it uses). Sierra pass miles on the PCT are approximate.
+- Services (lodging, grocery) are null for many Appalachian Trail towns. Phone numbers are nearly all null.
+- Nutrition values: only almonds and peanut butter were checked against USDA data; the rest are recalled USDA values and "typical label" estimates. An independent reviewer found no errors in about 150 rows, but this is not a source check.
+- Calorie-burn model: published equations (ACSM walking, Pandolf, Minetti, Mifflin-St Jeor) with simple adders; can be off by 20% or more.
+- Survival and medical cards: about 40 core and 25 medical cards were written from mainstream consensus without a page read. An independent review (data/REVIEW-safety.md) fixed 38 items and lists what still needs a wilderness-first-aid instructor, a mycologist and regional botanists before any PUBLIC release. Pine-needle tea and a mushroom "groups clubs teach first" list were removed.
+- No magnetic-declination grid is shipped (type it in, NOAA calculator).
+- Compass, vibration, wake lock, share sheet, SMS and notification behaviour were tested only against mocks in headless Chromium, not on a phone.
+- Healthica pairing: Backpackica reads Healthica's shared "body" numbers if Healthica publishes them. Healthica does not publish them yet; adding that is a privacy decision (weight, calorie target) and needs an opt-in switch.
+- Forage coverage is 16 species, not 40-60. More can be added once sources can be read.

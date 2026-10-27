@@ -1,0 +1,6 @@
+/* Saturnica service worker: cache the app shell so it works offline. */
+const CACHE = 'saturnica-v8';
+const FILES = ['./', 'index.html', 'css/app.css', 'js/data.js', 'js/core.js', 'js/game.js', 'js/views1.js', 'js/views2.js', 'js/views3.js', 'js/life.js', 'js/gangsta.js', 'js/gm2.js', 'js/gm3.js', 'js/occ-link.js', 'js/household.js', 'js/main.js', 'manifest.webmanifest', 'img/seal.png', 'img/icon-192.png', 'img/icon-512.png', 'img/apple-touch-icon.png', 'img/favicon.png', 'fonts/Lora.ttf', 'fonts/Lora-Italic.ttf'];
+self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('fetch', e => { const u = new URL(e.request.url); if (u.origin !== location.origin || e.request.method !== 'GET') return; e.respondWith(fetch(e.request).then(res => { if (res && res.ok) { const cp = res.clone(); caches.open(CACHE).then(c => c.put(e.request, cp)); } return res; }).catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match('index.html')))); });

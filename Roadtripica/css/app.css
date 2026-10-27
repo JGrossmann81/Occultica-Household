@@ -1,0 +1,55 @@
+
+/* journal */
+.rj-th{width:52px;height:52px;object-fit:cover;border-radius:10px;border:1px solid var(--line);flex:none;background:var(--panel2)}
+.rj-ico{width:52px!important;height:52px;background:var(--panel2);border:1px solid var(--line);border-radius:10px}
+.rj-big{width:100%;max-height:230px;object-fit:cover;border-radius:12px;border:1px solid var(--line);margin:4px 0 8px;background:var(--panel2);display:block}
+.rj-ph:empty{display:none}
+.rj-ent .tx b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rj-prev{width:100%;height:58vh;border:1px solid var(--line);border-radius:12px;background:#fff;margin:6px 0 10px}
+.rj-bingo{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px}
+.rj-sq{aspect-ratio:1;min-height:58px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit;font-size:.66rem;line-height:1.15;hyphens:auto;padding:2px;cursor:pointer;overflow-wrap:anywhere;display:flex;align-items:center;justify-content:center;text-align:center}
+.rj-sq.on{background:var(--gold2);border-color:var(--gold);color:#20170a;font-weight:700}
+.rj-sq:disabled{opacity:1}
+/* guide */
+.rg-note{margin-bottom:10px}
+
+/* trip */
+.rt-ctl{display:flex;flex:none;gap:2px}
+.rt-ib{width:44px;height:44px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;color:var(--gold);font-size:.95rem;cursor:pointer;font-family:inherit}
+.rt-ib:disabled{opacity:.3}
+.rt-leg{margin:0 0 0 17px;padding:4px 0 4px 20px;border-left:2px dashed var(--line);color:var(--dim);font-size:.8rem}
+.rt-sketch{width:100%;height:auto;display:block;margin:4px 0}
+.rt-dayhd{font-weight:700;color:var(--gold);margin:14px 0 6px;padding-top:6px}
+.rt-dayhd:first-of-type{margin-top:2px}
+.rt-tl{border-left:2px solid var(--line);margin-left:8px;padding-left:18px}
+.rt-ev{position:relative;padding:6px 0;min-height:44px}
+.rt-ev b{display:block}.rt-ev span{display:block;color:var(--dim);font-size:.82rem}
+.rt-ev::before{content:'';position:absolute;left:-26px;top:11px;width:12px;height:12px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)}
+.rt-ev.from::before{background:var(--green)}.rt-ev.to::before{background:var(--gold)}
+.rt-seg{color:var(--dim);font-size:.8rem;padding:2px 0 2px 2px;border-left:0}
+#rt-print{display:none}
+@media print{body.rt-printing>*:not(#rt-print){display:none!important}body.rt-printing #rt-print{display:block;color:#000;background:#fff;padding:12px}body.rt-printing #rt-print table.t th,body.rt-printing #rt-print table.t td{border-color:#999;color:#000}body.rt-printing #rt-print h1,body.rt-printing #rt-print h2{color:#000}}
+
+/* stops */
+.rs-chips .chip{min-height:44px;display:inline-flex;align-items:center}
+.rs-views .chip{min-height:44px}
+.rs-hrs{font-size:.82rem}.rs-hrs.g{color:var(--green)}.rs-hrs.w{color:var(--warn)}
+.rs-grp{margin:12px 0 2px;padding-top:6px;color:var(--gold);font-weight:700;font-size:.9rem;border-top:1px solid var(--line)}
+.rs-prog{list-style:none;margin:10px 0 4px}
+.rs-prog li{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.rs-prog li.ok span:last-child{color:var(--green)}.rs-prog li.err span:last-child{color:#f0a79e}.rs-prog li.wait,.rs-prog li.skip{color:var(--dim)}
+.rs-links{flex-wrap:wrap}.rs-links .btn{flex:1 1 30%;padding:10px 6px;font-size:.88rem}
+.rs-ask li{margin:5px 0}
+.rs-raw{margin:12px 0}.rs-raw summary{cursor:pointer;padding:10px 0;min-height:44px}
+.rs-rawv{text-align:right;overflow-wrap:anywhere;max-width:62%}
+.rs-places{margin-top:8px}
+.rs-sort{margin-top:2px}
+.li .tx b,.li .tx span{overflow-wrap:anywhere}
+#view .row.mid .in{flex:1}
+.chk span{min-width:0;overflow-wrap:anywhere}
+/* miles */
+.rm-sec .chip{min-height:44px;flex:1;text-align:center;justify-content:center}
+.rm-out{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+.rt-stat{grid-template-columns:repeat(4,1fr)!important;gap:6px}.rt-stat b{font-size:1.02rem!important}.rt-stat span{font-size:.62rem!important}
+.chips .chip{max-width:70vw;overflow:hidden;text-overflow:ellipsis}
+.rt-stat b{white-space:nowrap;font-size:.92rem!important}
