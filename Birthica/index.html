@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Birthica</title>
+<meta name="description" content="Birthica: a 90s-style groovebox with two drum machines, an acid bass and a poly synth. Tap the steps and press play.">
+<meta name="theme-color" content="#100626">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="logo" aria-label="Birthica"><span class="sun"></span><b>BIRTHICA</b><i>groovebox</i></div>
+  <div class="xport">
+    <button id="play" class="big" aria-pressed="false">&#9654; Play</button>
+    <div class="bpm"><button id="bpmd" aria-label="Slower">&minus;</button><div><b id="bpm">110</b><span>BPM</span></div><button id="bpmu" aria-label="Faster">+</button></div>
+    <label class="sl"><span>Swing</span><input id="swing" type="range" min="0" max="100" value="0"></label>
+    <label class="sl"><span>Master</span><input id="master" type="range" min="-36" max="6" step="0.5" value="-6"></label>
+  </div>
+</header>
+<nav id="tabs" class="tabs" role="tablist" aria-label="Instruments"></nav>
+<main id="panel"></main>
+<section id="keys" class="keys" aria-label="Play it live"></section>
+<footer class="foot">Birthica for the web, from the Occultica plugin. Sounds are made live in your browser, nothing is uploaded. Tap Play once to wake up the sound. Your beat saves on this device.</footer>
+<script src="app.js"></script>
+</body>
+</html>
