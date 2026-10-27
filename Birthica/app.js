@@ -69,16 +69,30 @@ function randomM(m) {
 
 /* ---- audio ---- */
 let ctx = null, node = null, ready = null;
+let unlocked = false;
+function unlockIOS() { // phones: create + resume inside the tap, and move audio out of the "ringer" channel so the silent switch does not mute it
+  if (unlocked) return; unlocked = true;
+  try { const a = document.createElement('audio'); a.setAttribute('playsinline', ''); a.loop = true; a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='; a.volume = 0.01; const p = a.play(); if (p && p.catch) p.catch(() => { }); window.__keep = a; } catch (e) { }
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { }
+}
 function ensureAudio() {
   if (ready) return ready;
+  unlockIOS();
+  const AC_ = window.AudioContext || window.webkitAudioContext;
+  if (!AC_ || !window.AudioWorkletNode) { toast('This browser is too old for Birthica. Try a current Chrome, Edge, Safari or Firefox.'); return Promise.reject(new Error('no audio worklet')); }
+  ctx = new AC_({ latencyHint: 'interactive' });
+  const res = ctx.resume(); // inside the tap, before any waiting
+  try { const b = ctx.createBuffer(1, 1, 22050), s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination); s.start(0); } catch (e) { }
   ready = (async () => {
-    const AC_ = window.AudioContext || window.webkitAudioContext; ctx = new AC_({ latencyHint: 'interactive' });
+    try { await res; } catch (e) { }
     await ctx.audioWorklet.addModule('worklet.js');
     node = new AudioWorkletNode(ctx, 'birthica', { numberOfInputs: 0, outputChannelCount: [2] });
     node.connect(ctx.destination);
     node.port.onmessage = e => { if (e.data && typeof e.data.step === 'number') { S.step = e.data.step; paintCursor(); } };
     sendAll();
-  })().catch(err => { ready = null; toast('Sound could not start: ' + (err && err.message || err)); throw err; });
+    if (ctx.state !== 'running') { try { await ctx.resume(); } catch (e) { } }
+    if (ctx.state !== 'running') toast('Sound is blocked. Tap Play again. On iPhone, turn off the silent switch and turn the volume up.');
+  })().catch(err => { ready = null; try { ctx.close(); } catch (e) { } ctx = null; toast('Sound could not start: ' + (err && err.message || err)); throw err; });
   return ready;
 }
 const post = m => { if (node) node.port.postMessage(m); };
@@ -202,7 +216,7 @@ function renderKeys() {
 function renderAll() { renderTabs(); renderPanel(); syncTop(); }
 function syncTop() { $('#bpm').textContent = S.tempo; $('#swing').value = S.values[P.swing]; $('#master').value = S.values[P.master]; const p = $('#play'); p.setAttribute('aria-pressed', S.playing); p.innerHTML = S.playing ? '&#9632; Stop' : '&#9654; Play'; }
 async function togglePlay() {
-  try { await ensureAudio(); if (ctx.state === 'suspended') await ctx.resume(); } catch (e) { return; }
+  try { await ensureAudio(); if (ctx.state !== 'running') await ctx.resume(); } catch (e) { return; }
   S.playing = !S.playing; post({ play: S.playing }); if (!S.playing) { S.step = -1; paintCursor(); } syncTop();
 }
 function setTempo(t) { S.tempo = Math.max(40, Math.min(240, t)); post({ tempo: S.tempo }); syncTop(); save(); }

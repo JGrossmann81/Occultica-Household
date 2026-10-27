@@ -50,7 +50,10 @@ function buildMix(c, dest, live) {
   return { m, an, tn };
 }
 function trackGain(t, anySolo) { return anySolo ? (t.solo ? t.vol : 0) : (t.mute ? 0 : t.vol); }
+let unlocked = false;
+function unlockIOS() { if (unlocked) return; unlocked = true; try { const a = document.createElement('audio'); a.setAttribute('playsinline', ''); a.loop = true; a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA='; a.volume = 0.01; const p = a.play(); if (p && p.catch) p.catch(() => { }); window.__keep = a; } catch (e) { } try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) { } }
 function ensureAudio() {
+  unlockIOS();
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
     const mix = buildMix(ctx, ctx.destination, true); master = mix.m; mAn = mix.an; trackNodes = mix.tn; noiseBuf = mkNoise(ctx);
