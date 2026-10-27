@@ -16,7 +16,9 @@ function unlock() {
   try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { }
 }
 function ensureAudio() {
-  if (ready) return ready; unlock();
+  if (ready) return ready;
+  if (!ctx && UI.touchDown && !UI.activated) return Promise.reject(new Error('waiting for the end of the tap'));
+  unlock();
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC || !window.AudioWorkletNode) { say('This browser is too old. Try a current Chrome, Edge, Safari or Firefox.', 1); return Promise.reject(new Error('no worklet')); }
   ctx = new AC({ latencyHint: 'interactive' }); const res = ctx.resume();
@@ -93,7 +95,7 @@ function renderKb() {
   for (let w = 0; w < total - 1; w++) { const st = w % 7; const semi = WHITE[st] + 1; if ([1, 3, 6, 8, 10].indexOf(semi) < 0) continue; if (st === 2 || st === 6) continue; const n = start + Math.floor(w / 7) * 12 + semi; const k = el('div', 'bk'); k.dataset.n = n; const bw = 100 / total * 0.62; k.style.left = ((w + 1) / total * 100 - bw / 2) + '%'; k.style.width = bw + '%'; kb.appendChild(k); keyEls[n] = k; }
   $('#octl').textContent = 'C' + UI.oct;
 }
-function noteOn(n, vel) { if (held.has('n' + n)) return; held.set('n' + n, 1); ensureEngine().then(() => { post({ on: [n, vel || 0.8] }); }); if (keyEls[n]) keyEls[n].classList.add('dn'); }
+function noteOn(n, vel) { if (held.has('n' + n)) return; held.set('n' + n, 1); ensureEngine().then(() => { if (held.has('n' + n)) post({ on: [n, vel || 0.8] }); }).catch(() => { }); if (keyEls[n]) keyEls[n].classList.add('dn'); }
 function noteOff(n) { if (!held.has('n' + n)) return; held.delete('n' + n); post({ off: n }); if (keyEls[n]) keyEls[n].classList.remove('dn'); }
 const ptr = new Map();
 function keyAt(x, y) { const e = document.elementFromPoint(x, y); return e && e.dataset && e.dataset.n ? +e.dataset.n : null; }
@@ -140,10 +142,14 @@ function go(id, push) {
 }
 
 /* iPhone: Safari only lets sound start from a finished tap (touchend / click), not from the first touch-down. Unlock on every such gesture until audio is running. */
-function gestureUnlock() {
-  unlock(); ensureAudio().then(() => { if (ctx && ctx.state !== 'running') return ctx.resume(); }).catch(() => { });
+function gestureUnlock(e) {
+  UI.activated = true;
+  unlock();
+  if (ctx && ctx.state !== 'running') { try { ctx.resume(); } catch (x) { } }   // synchronous, inside the tap
+  ensureEngine().then(() => { if (ctx && ctx.state !== 'running') ctx.resume(); }).catch(() => { });
   if (ctx && ctx.state === 'running') ['touchend', 'pointerup', 'click', 'keydown'].forEach(t => removeEventListener(t, gestureUnlock, true));
 }
+addEventListener('pointerdown', e => { UI.touchDown = e.pointerType === 'touch' || e.pointerType === 'pen'; if (!UI.touchDown) UI.activated = true; }, true);
 ['touchend', 'pointerup', 'click', 'keydown'].forEach(t => addEventListener(t, gestureUnlock, true));
 
 function beep() {
@@ -167,7 +173,7 @@ function init() {
   $('#reset').onclick = () => { const d = OCC.engines[UI.id]; d.specs.forEach((s, i) => { if (i > 0) { UI.values[i] = s.def; if (UI.ctl[i]) UI.ctl[i].update(s.def); } }); UI.values[0] = d.specs[0].def; UI.ctl[0].update(UI.values[0]); sendAll(); persist(); say('Knobs reset.'); };
   addEventListener('hashchange', () => go(location.hash.slice(1), false));
   // ensure the engine is loaded the first time anything is pressed
-  const first = () => { ensureEngine(); removeEventListener('pointerdown', first, true); removeEventListener('keydown', first, true); };
+  const first = () => { ensureEngine().catch(() => { }); removeEventListener('pointerdown', first, true); removeEventListener('keydown', first, true); };
   addEventListener('pointerdown', first, true); addEventListener('keydown', first, true);
   const start = location.hash.slice(1) || (sv && sv.id) || 'minica'; go(start, true); midi();
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
