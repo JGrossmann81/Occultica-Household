@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Occultica Synths</title><meta name="theme-color" content="#100626">
+<meta name="description" content="Six playable synthesizers in your browser: Minica, Fmica, Hammerica, Rhodica, Odyssica and Kormica.">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="stylesheet" href="style.css"></head>
+<body>
+<header>
+  <div class="brand"><span class="logo">◆</span><b>OCCULTICA SYNTHS</b></div>
+  <nav id="nav" aria-label="Choose a synth"></nav>
+</header>
+<main>
+  <section class="card" id="top">
+    <div class="row sp"><div><h1 id="title">…</h1><p id="blurb" class="mu"></p></div>
+      <div class="row"><label class="mu">Sound <select id="preset" aria-label="Sound preset"></select></label>
+      <button id="demo" aria-pressed="false">▶ Demo</button><button id="reset">Reset knobs</button></div></div>
+    <div class="row"><div class="meter" aria-hidden="true"><i id="lvl"></i></div><span id="msg" class="mu" role="status">Tap a key (or press A, S, D, F… on your keyboard) to play.</span></div>
+  </section>
+  <section class="card" id="play">
+    <div class="row sp">
+      <div class="row"><button id="octd" aria-label="Octave down">Oct −</button><span id="octl" class="mu">C3</span><button id="octu" aria-label="Octave up">Oct +</button></div>
+      <label class="mu wheel">Bend <input id="bend" type="range" min="-1" max="1" step="0.01" value="0" aria-label="Pitch bend"></label>
+      <label class="mu wheel">Mod <input id="mod" type="range" min="0" max="1" step="0.01" value="0" aria-label="Mod wheel"></label>
+      <button id="panic">Stop notes</button>
+    </div>
+    <div id="kb" role="group" aria-label="Piano keyboard"></div>
+    <p class="mu small">Computer keys: A S D F G H J K L are the white keys, W E T Y U O P the black keys, Z and X move the octave. A MIDI keyboard works too in Chrome and Edge.</p>
+  </section>
+  <section id="params"></section>
+</main>
+<script src="worklet.js"></script><script src="ui.js"></script></body></html>
