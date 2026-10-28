@@ -1,0 +1,7 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hauntica</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0c0608"><link rel="icon" href="icon-192.png"><link rel="stylesheet" href="style.css"></head><body>
+<header><div class="brand"><span class="logo">&#9760;</span><b>HAUNTICA</b><small>haunted-house sound and video control</small></div>
+<div class="tp"><button id="arm" class="big">1. Arm audio</button><button id="stopall" class="rec">Stop all</button><label class="chk">Fade <input id="fade" type="range" min="0" max="8" step=".5" value="2"><span id="fadev">2 s</span></label></div></header>
+<nav id="tabs"><button data-t="scenes" class="on">Scenes</button><button data-t="edit">Edit scenes</button><button data-t="zones">Zones &amp; outputs</button><button data-t="sounds">Sounds</button><button data-t="video">Video</button><button data-t="help">Help</button></nav>
+<main id="view"></main><div id="toast" role="status"></div>
+<script src="sounds.js"></script><script src="app.js"></script></body></html>

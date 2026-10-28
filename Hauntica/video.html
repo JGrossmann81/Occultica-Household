@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hauntica video</title>
+<style>html,body{margin:0;height:100%;background:#000;color:#ccc;font:14px system-ui}iframe{position:fixed;inset:0;width:100%;height:100%;border:0}#h{position:fixed;left:8px;bottom:8px;background:#000c;padding:6px 10px;border-radius:8px;z-index:3;transition:opacity 1s}</style></head><body>
+<div id="h">Drag this window to the other display, then press F11 (or the player's fullscreen button). Sound plays from the default output of this computer.</div>
+<script>
+const q=new URLSearchParams(location.search),v=(q.get('v')||'').replace(/[^\w-]/g,''),l=(q.get('l')||'').replace(/[^\w-]/g,'');
+const f=document.createElement('iframe');f.allow='autoplay; fullscreen; encrypted-media';f.allowFullscreen=true;
+f.src='https://www.youtube-nocookie.com/embed/'+(v||'')+'?autoplay=1&rel=0&modestbranding=1&playsinline=1'+(q.get('loop')=='1'&&v?'&loop=1&playlist='+v:'')+(l?'&list='+l:'');
+document.body.appendChild(f);setTimeout(()=>document.getElementById('h').style.opacity=0,9000);
+</script></body></html>
