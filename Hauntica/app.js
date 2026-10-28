@@ -32,6 +32,7 @@
   if (!S.ver || S.ver < 2) { MORE().forEach(m => { if (!S.scenes.some(x => x.id === m.id)) S.scenes.push(m); }); S.ver = 2; }
   if (S.ver < 3) { const def = S.zones.length === 4 && S.zones.every((z, i) => z.name === ZN[i]); if (def) toLayout3(S); else S.ver = 3; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
   S.events = S.events || { on: false, mean: 45, vol: .8, onlyPlaying: true, pool: ['creak', 'whispers', 'chains', 'knock', 'scratch', 'bell', 'howl', 'banshee', 'steps', 'demon', 'slam'], zones: [] };
+  S.remote = S.remote || { on: false, pin: '' };
   S.show = S.show || { loop: false, steps: [{ scene: 's1', min: 20, hit: true }, { scene: 's2', min: 20, hit: false }, { scene: 's3', min: 20, hit: false }, { scene: 's4', min: 20, hit: false }, { scene: 's10', min: 20, hit: true }, { scene: 's6', min: 20, hit: false }] };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } };
   let tab = 'scenes', editSc = null, devs = [], custom = [], armed = false;
@@ -132,7 +133,7 @@
     },
     sounds() {
       return `<h2>Sounds</h2><div class="card"><div class="row"><span>Listen on</span><select id="pz">${S.zones.map((z, i) => `<option value="${i}" ${sounds.pz == i ? 'selected' : ''}>Zone ${i + 1}: ${esc(z.name)}</option>`).join('')}</select><label class="big"><input type="file" id="up" accept="audio/*,video/mp4,video/webm" multiple> add your own files</label></div><div class="row"><button data-rec class="${rec ? 'rec on' : ''}">${rec ? 'Stop recording' : '&#127908; Record a voice line'}</button><label class="chk"><input type="checkbox" id="recfx" checked> make it deep and echoing</label><span class="mu xs">Saved as a one-shot for the Scare pads and Random scares.</span></div><p class="mu xs">Uploaded files stay on this computer (in the browser). Use only sounds you made, bought or that are free for public use. Good free sources: freesound.org (filter to CC0), pixabay.com/sound-effects, sonniss.com GDC free bundles, YouTube Audio Library. Check each license.</p></div>
-      <table>${sndList().map(s => `<tr><td>${esc(s.name)}</td><td class="mu xs">${s.custom ? 'your file' : 'made by Hauntica'}${s.loop ? ', loops' : ''}</td><td><button data-prev="${esc(s.id)}" class="${Z[sounds.pz] && Z[sounds.pz].voices['prev:' + s.id] ? 'on' : ''}">${Z[sounds.pz] && Z[sounds.pz].voices['prev:' + s.id] ? 'Stop' : 'Listen'}</button>${s.custom ? `<button data-oneshot="${esc(s.id)}">${s.loop ? 'Loops' : 'One shot'}</button><button data-delsnd="${esc(s.id)}" class="rec">Delete</button>` : ''}</td></tr>`).join('')}</table>`;
+      <table>${sndList().map(s => `<tr><td>${esc(s.name)}</td><td class="mu xs">${s.custom ? 'your file' : 'made by Hauntica'}${s.loop ? ', loops' : ''}</td><td><button data-dl="${esc(s.id)}" title="Save as a file">Save</button><button data-prev="${esc(s.id)}" class="${Z[sounds.pz] && Z[sounds.pz].voices['prev:' + s.id] ? 'on' : ''}">${Z[sounds.pz] && Z[sounds.pz].voices['prev:' + s.id] ? 'Stop' : 'Listen'}</button>${s.custom ? `<button data-oneshot="${esc(s.id)}">${s.loop ? 'Loops' : 'One shot'}</button><button data-delsnd="${esc(s.id)}" class="rec">Delete</button>` : ''}</td></tr>`).join('')}</table>`;
     },
     lights() {
       const hl = HL, ok = hl.supported();
@@ -257,6 +258,75 @@
       mr.onstop = async () => { st.getTracks().forEach(t => t.stop()); rec = null; let blob = new Blob(ch, { type: mr.mimeType }); const fx = $('#recfx') && $('#recfx').checked; try { if (fx) blob = await spooky(blob); } catch (er) { toast('Could not add the effect; saved plain'); } const name = prompt('Name this recording', 'Voice ' + (custom.length + 1)); if (name) { await dbop('readwrite', q => q.put({ id: Date.now() + '', name, blob, oneshot: true })); await loadCustom(); toast('Saved. Find it under Sounds and on the Pads tab.'); } render(); };
       mr.start(); render(); } catch (er) { toast('Could not use the microphone'); }
   }
+  /* ---- zone 5 default scenes ---- */
+  const Z5 = { s1: [['rain', .6], ['wind', .4], ['thunder', .6]], s2: [['creak', .6], ['whispers', .4], ['crickets', .3]], s3: [['radio', .35], ['whispers', .5], ['drone', .3]], s4: [['drips', .5], ['chains', .45], ['drone', .4]], s5: [['crickets', .5], ['bell', .4], ['wind', .3]], s6: [['drone', .35], ['heart', .3]], s7: [['banshee', .45], ['wind', .4]], s8: [['howl', .5], ['crickets', .4], ['steps', .4]], s9: [['cauldron', .5], ['flies', .3], ['organ', .4]], s10: [['knock', .5], ['clock', .5], ['scratch', .3], ['choir', .3]] };
+  if (S.ver < 4) { if (S.zones.length === 4 && S.zones[3].name === 'Living room') { S.zones.push({ name: 'Shop and front porch', dev: 'default', ch: 'both', vol: .85, mute: false }); S.scenes.forEach(sc => { (Z5[sc.id] || []).forEach(([snd, vol]) => sc.cues.push(cue(4, snd, vol))); }); } S.ver = 4; save(); }
+  /* ---- phone remote (talks to remote-server.js running on this computer) ---- */
+  let rem = { es: null, ok: false, timer: null };
+  const REMOTE = 'http://localhost:8787';
+  function padList() { return ['banshee', 'demon', 'howl', 'knock', 'scratch', 'creak', 'whispers', 'chains', 'bell', 'steps', 'thunder', 'heart'].concat(custom.filter(c => c.oneshot).map(c => 'c:' + c.id)).map(id => ({ id, name: sndName(id) })); }
+  function remoteCmd(m) {
+    if (m.cmd === 'scene') playScene(m.id); else if (m.cmd === 'stop') stopAll(); else if (m.cmd === 'panic') panic();
+    else if (m.cmd === 'hit') hit(m.zone === 'all' ? 'all' : +m.zone); else if (m.cmd === 'build') { hit('all', 'riser'); setTimeout(() => hit('all'), 8000); }
+    else if (m.cmd === 'pad') { const zs = m.zone === 'all' ? S.zones.map((_, i) => i) : [+m.zone]; zs.forEach(i => oneShot(i, m.snd, .9, 6).catch(() => { })); if (m.snd === 'stinger') hit('all'); }
+    else if (m.cmd === 'evtoggle') { S.events.on = !S.events.on; save(); evStart(); if (tab === 'auto') render(); }
+    else if (m.cmd === 'showgo') { (async () => { if (!armed) await arm(); showGo(0); })(); } else if (m.cmd === 'shownext') { if (showI >= 0) showGo(showI + 1); } else if (m.cmd === 'showstop') showStop();
+  }
+  function remotePush() { if (!rem.es) return; const el = $('#showinfo'); fetch(REMOTE + '/state', { method: 'POST', headers: { 'x-pin': S.remote.pin, 'content-type': 'application/json' }, body: JSON.stringify({ scenes: S.scenes.map(x => ({ id: x.id, name: x.name })), cur: S.cur, pads: padList(), zones: S.zones.map(z => z.name), events: !!S.events.on, show: showI >= 0 && el ? el.textContent : (showI >= 0 ? 'Show running, step ' + (showI + 1) : '') }) }).catch(() => { }); }
+  function remoteOff() { if (rem.es) rem.es.close(); rem.es = null; rem.ok = false; clearInterval(rem.timer); S.remote.on = false; save(); if (tab === 'auto') render(); }
+  function remoteOn(pin) {
+    if (rem.es) rem.es.close(); clearInterval(rem.timer); S.remote = { on: true, pin }; save();
+    const es = rem.es = new EventSource(REMOTE + '/events?pin=' + encodeURIComponent(pin));
+    es.onopen = () => { rem.ok = true; if (tab === 'auto') render(); remotePush(); }; es.onerror = () => { if (rem.ok) { rem.ok = false; if (tab === 'auto') render(); } };
+    es.onmessage = e => { try { remoteCmd(JSON.parse(e.data)); } catch (er) { } }; rem.timer = setInterval(remotePush, 1500);
+  }
+  /* ---- export: mix a zone of a scene into one file for a USB stick or radio; or download one sound ---- */
+  let exp = { scene: null, zone: 0, min: 3, fmt: 'mp3', busy: false };
+  function loadLame() { return window.lamejs && lamejs.Mp3Encoder ? Promise.resolve() : new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'lame.min.js'; sc.onload = ok; sc.onerror = () => no(new Error('lame')); document.head.appendChild(sc); }); }
+  async function encodeFile(L, R, sr, fmt) {
+    if (fmt === 'wav') return wavOf([L, R], sr);
+    await loadLame(); const enc = new lamejs.Mp3Encoder(2, sr, 128), out = [], n = L.length, cv = (a, i, j) => { const x = new Int16Array(j - i); for (let k = i; k < j; k++) { const v = Math.max(-1, Math.min(1, a[k])); x[k - i] = v < 0 ? v * 32768 : v * 32767; } return x; };
+    for (let i = 0; i < n; i += 1152 * 40) { const j = Math.min(n, i + 1152 * 40), b = enc.encodeBuffer(cv(L, i, j), cv(R, i, j)); if (b.length) out.push(new Uint8Array(b)); if ((i / 1152) % 400 === 0) await new Promise(r => setTimeout(r)); }
+    const f = enc.flush(); if (f.length) out.push(new Uint8Array(f)); return new Blob(out, { type: 'audio/mpeg' });
+  }
+  const saveBlob = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); };
+  const fname = t => t.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_').slice(0, 60) || 'Hauntica';
+  async function sourceOf(id) {
+    if (!id.startsWith('c:')) { const g = HS.get(id); return { L: g[0], R: g[1], sr: HS.SR }; }
+    const rec = custom.find(c => 'c:' + c.id === id), ac = new AudioContext(), b = await ac.decodeAudioData(await rec.blob.arrayBuffer()); ac.close(); return { L: b.getChannelData(0), R: b.numberOfChannels > 1 ? b.getChannelData(1) : b.getChannelData(0), sr: b.sampleRate };
+  }
+  async function makeMix() {
+    const sc = S.scenes.find(x => x.id === exp.scene) || S.scenes[0], cues = sc.cues.filter(c => c.zone === exp.zone && (sndList().find(q => q.id === c.snd) || {}).loop);
+    if (!cues.length) { toast('That scene has no looping sounds in that zone'); return; }
+    exp.busy = true; $('#expst').textContent = 'Mixing... this takes a few seconds'; await new Promise(r => setTimeout(r, 50));
+    try {
+      const sr = HS.SR, N = exp.min * 60 * sr, X = 2 * sr, L = new Float32Array(N + X), R = new Float32Array(N + X);
+      for (const c of cues) { const src = await sourceOf(c.snd); let sl = src.L, sr2 = src.R; if (src.sr !== sr) { const k = src.sr / sr, m = Math.floor(sl.length / k), a = new Float32Array(m), b = new Float32Array(m); for (let i = 0; i < m; i++) { a[i] = sl[Math.floor(i * k)]; b[i] = sr2[Math.floor(i * k)]; } sl = a; sr2 = b; } const len = sl.length, off = Math.floor(Math.random() * len); for (let i = 0; i < N + X; i++) { const k = (i + off) % len; L[i] += sl[k] * c.vol; R[i] += sr2[k] * c.vol; } }
+      let m = 1e-6; for (let i = 0; i < N + X; i++) m = Math.max(m, Math.abs(L[i]), Math.abs(R[i])); const g = Math.min(1, .9 / m) * (m > .9 ? 1 : 1);
+      const oL = new Float32Array(N), oR = new Float32Array(N); for (let i = 0; i < N; i++) { oL[i] = L[i] * g; oR[i] = R[i] * g; }
+      for (let i = 0; i < X; i++) { const t = i / X, a = Math.sin(t * Math.PI / 2), b = Math.cos(t * Math.PI / 2); oL[i] = L[i] * g * a + L[N + i] * g * b; oR[i] = R[i] * g * a + R[N + i] * g * b; }
+      $('#expst').textContent = 'Encoding...'; const blob = await encodeFile(oL, oR, sr, exp.fmt);
+      saveBlob(blob, 'Hauntica_' + fname(sc.name) + '_' + fname(S.zones[exp.zone].name) + '.' + exp.fmt); $('#expst').textContent = 'Saved ' + (blob.size / 1048576).toFixed(1) + ' MB. Copy it to the USB stick.';
+    } catch (er) { $('#expst').textContent = 'Could not make the file: ' + (er.message || er); }
+    exp.busy = false;
+  }
+  async function dlSound(id) { toast('Making the file...'); try { const s0 = await sourceOf(id), blob = await encodeFile(s0.L, s0.R, s0.sr, exp.fmt); saveBlob(blob, 'Hauntica_' + fname(sndName(id)) + '.' + exp.fmt); } catch (er) { toast('Could not make the file'); } }
+  const oldSounds = views.sounds;
+  views.sounds = () => { if (!exp.scene || !S.scenes.some(x => x.id === exp.scene)) exp.scene = S.scenes[0].id; if (exp.zone >= S.zones.length) exp.zone = 0;
+    return `<div class="card"><h3>Make a file for a USB stick or radio</h3><p class="mu xs">Mixes one zone of one scene into a single looping file. Copy it to a USB stick and plug it into the radio. MP3 plays on almost every radio. (There is a very short pause where the file repeats on most radios.)</p>
+    <div class="row"><select data-expsc>${S.scenes.map(x => `<option value="${x.id}" ${x.id === exp.scene ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><select data-expz>${S.zones.map((z, i) => `<option value="${i}" ${i === exp.zone ? 'selected' : ''}>${i + 1}: ${esc(z.name)}</option>`).join('')}</select><select data-expm>${[2, 3, 5, 8].map(m => `<option value="${m}" ${m === exp.min ? 'selected' : ''}>${m} minutes</option>`).join('')}</select><select data-expf><option value="mp3" ${exp.fmt === 'mp3' ? 'selected' : ''}>MP3</option><option value="wav" ${exp.fmt === 'wav' ? 'selected' : ''}>WAV (big)</option></select><button data-mk class="big">Make file</button></div><p class="xs" id="expst"></p></div>` + oldSounds(); };
+  const oldRows = null;
+  const wrapAuto = () => { views.auto = (f => () => f() + `<h2>Phone remote</h2><div class="card"><p class="xs mu">Control scenes and jump scares from your phone while you walk around. It needs a small helper that runs on <b>this</b> computer (the one running Hauntica). Nothing leaves your Wi-Fi.</p>
+    <ol class="sm"><li>Install Node.js (the LTS download at nodejs.org) on this computer, once.</li><li>Download <a href="remote-server.js" download>remote-server.js</a> and <a href="start-remote.bat" download>start-remote.bat</a> into the same folder. Double-click <b>start-remote.bat</b>. A window shows a PIN and your phone's web address.</li><li>Type the PIN here and press Connect. Then open the web address on your phone.</li></ol>
+    <div class="row"><input type="text" id="rpin" placeholder="PIN" inputmode="numeric" value="${esc((S.remote || {}).pin || '')}" style="width:110px"><button data-rcon class="big">${rem.es ? 'Reconnect' : 'Connect'}</button>${rem.es ? '<button data-roff class="rec">Disconnect</button>' : ''}<span class="xs ${rem.ok ? '' : 'mu'}">${rem.ok ? '<span class="dot live"></span> connected to the helper' : rem.es ? 'waiting for the helper...' : 'not connected'}</span></div></div>`)(views.auto); };
+  document.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+    if (d.mk != null) { if (!exp.busy) makeMix(); return; }
+    if (d.dl) { dlSound(d.dl); return; }
+    if (d.rcon != null) { const pin = $('#rpin').value.trim(); if (!pin) { toast('Type the PIN shown in the helper window'); return; } remoteOn(pin); render(); return; }
+    if (d.roff != null) { remoteOff(); return; }
+  });
+  document.addEventListener('change', e => { const t = e.target, d = t.dataset; if (d.expsc != null) exp.scene = t.value; else if (d.expz != null) exp.zone = +t.value; else if (d.expm != null) exp.min = +t.value; else if (d.expf != null) exp.fmt = t.value; });
   const SCARE = ['stinger', 'slam', 'riser', 'banshee', 'demon', 'howl', 'knock', 'scratch', 'creak', 'whispers', 'chains', 'bell', 'steps', 'breath', 'heart', 'cauldron', 'flies', 'scrape', 'choir', 'organ', 'musicbox', 'radio', 'thunder', 'drips'];
   let padZone = 'all';
   views.pads = () => `<h2>Scare pads</h2><div class="card"><div class="row"><span>Send to</span><button data-pz="all" class="${padZone === 'all' ? 'on' : ''}">All zones</button>${S.zones.map((z, i) => `<button data-pz="${i}" class="${padZone === String(i) ? 'on' : ''}">${i + 1}: ${esc(z.name)}</button>`).join('')}</div><p class="mu xs">Tap a pad to play that sound once (loops play a short random piece). Your recorded voice lines are at the end.</p></div>
@@ -304,6 +374,8 @@
     if (d.shh != null) { S.show.steps[+d.shh].hit = t.checked; save(); return; }
     if (d.shloop != null) { S.show.loop = t.checked; save(); return; }
   });
+  wrapAuto();
+  if (S.remote && S.remote.on && S.remote.pin) setTimeout(() => remoteOn(S.remote.pin), 600);
   window.HAUNT = { S, Z, playScene, stopAll, hit, arm, zone, buf, sndList };
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
   HL.onchange = () => { if (tab === 'lights' || tab === 'edit') render(); };
