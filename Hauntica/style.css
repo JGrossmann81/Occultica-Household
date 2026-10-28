@@ -19,3 +19,5 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px;border-bottom:1px so
 .warn{border-color:var(--go);background:#2a1c08}.tag{display:inline-block;background:var(--p2);border:1px solid var(--ln);border-radius:20px;padding:2px 9px;margin:2px;font-size:12px}
 #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#000c;border:1px solid var(--go);padding:8px 14px;border-radius:10px;opacity:0;transition:.25s;pointer-events:none;max-width:90vw}#toast.show{opacity:1}
 a{color:var(--go)}
+
+@media print{header,nav,#toast,button{display:none!important}body{background:#fff;color:#000}.card{border-color:#999;background:#fff}td,th{border-color:#999}input{border:0;color:#000;background:#fff}}

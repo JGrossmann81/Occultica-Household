@@ -31,6 +31,8 @@
   let S; try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { } if (!S || !S.zones) S = DEF();
   if (!S.ver || S.ver < 2) { MORE().forEach(m => { if (!S.scenes.some(x => x.id === m.id)) S.scenes.push(m); }); S.ver = 2; }
   if (S.ver < 3) { const def = S.zones.length === 4 && S.zones.every((z, i) => z.name === ZN[i]); if (def) toLayout3(S); else S.ver = 3; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+  S.events = S.events || { on: false, mean: 45, vol: .8, onlyPlaying: true, pool: ['creak', 'whispers', 'chains', 'knock', 'scratch', 'bell', 'howl', 'banshee', 'steps', 'demon', 'slam'], zones: [] };
+  S.show = S.show || { loop: false, steps: [{ scene: 's1', min: 20, hit: true }, { scene: 's2', min: 20, hit: false }, { scene: 's3', min: 20, hit: false }, { scene: 's4', min: 20, hit: false }, { scene: 's10', min: 20, hit: true }, { scene: 's6', min: 20, hit: false }] };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } };
   let tab = 'scenes', editSc = null, devs = [], custom = [], armed = false;
   const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2800); };
@@ -39,7 +41,7 @@
   const idb = () => new Promise((ok, no) => { const r = indexedDB.open('hauntica', 1); r.onupgradeneeded = () => r.result.createObjectStore('snd', { keyPath: 'id' }); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
   const dbop = (mode, fn) => idb().then(db => new Promise((ok, no) => { const tx = db.transaction('snd', mode), st = tx.objectStore('snd'), q = fn(st); tx.oncomplete = () => ok(q && q.result); tx.onerror = () => no(tx.error); })).catch(() => []);
   const loadCustom = async () => { custom = (await dbop('readonly', s => s.getAll())) || []; };
-  const sndList = () => HS.order.map(id => ({ id, name: HS.gen[id].name, loop: HS.gen[id].loop })).concat(custom.map(c => ({ id: 'c:' + c.id, name: c.name, loop: true, custom: true })));
+  const sndList = () => HS.order.map(id => ({ id, name: HS.gen[id].name, loop: HS.gen[id].loop })).concat(custom.map(c => ({ id: 'c:' + c.id, name: c.name, loop: !c.oneshot, custom: true })));
   const sndName = id => { const s = sndList().find(x => x.id === id); return s ? s.name : id + ' (missing)'; };
 
   /* ---- audio engine: one AudioContext per zone, sent to that zone's output device ---- */
@@ -86,7 +88,7 @@
     await Promise.all(sc.cues.filter(c => S.zones[c.zone]).map(c => startCue(c.zone, c, S.fade))); refresh();
   }
   function stopAll() { Z.forEach(z => { if (z) Object.keys(z.voices).forEach(k => fadeOut(z, k, 1.2)); }); S.cur = null; save(); if (window.HL && HL.lights.length) HL.set('off'); refresh(); }
-  async function hit(which, snd) { snd = snd || 'stinger'; if (!armed) await arm(); const zs = which === 'all' ? S.zones.map((_, i) => i) : [which]; for (const i of zs) { const z = zone(i), b = await buf(z, snd), s = z.ctx.createBufferSource(), g = z.ctx.createGain(); s.buffer = b; g.gain.value = 1; s.connect(g); g.connect(z.bus); s.start(); } }
+  async function hit(which, snd) { snd = snd || 'stinger'; if (!armed) await arm(); if (snd === 'stinger' && window.HL && HL.lights.length && S.flash !== false) { const m = HL.mode, c = HL.color; HL.set('solid', '#ffffff'); setTimeout(() => HL.set(m, c), 220); } const zs = which === 'all' ? S.zones.map((_, i) => i) : [which]; for (const i of zs) { const z = zone(i), b = await buf(z, snd), s = z.ctx.createBufferSource(), g = z.ctx.createGain(); s.buffer = b; g.gain.value = 1; s.connect(g); g.connect(z.bus); s.start(); } }
   async function preview(i, id) { if (!armed) await arm(); const z = zone(i), k = 'prev:' + id; if (z.voices[k]) { fadeOut(z, k, .3); refresh(); return; } const b = await buf(z, id), s = z.ctx.createBufferSource(), g = z.ctx.createGain(); s.buffer = b; s.loop = true; g.gain.value = .7; s.connect(g); g.connect(z.bus); s.start(); const vo = z.voices[k] = { src: s, g }; s.onended = () => { if (z.voices[k] === vo) delete z.voices[k]; refresh(); }; setTimeout(() => { if (z.voices[k] === vo) { fadeOut(z, k, 1); refresh(); } }, 20000); refresh(); }
   async function testZone(i) {
     if (!armed) await arm(); const z = zone(i); applyZone(i); const t0 = z.ctx.currentTime + .1;
@@ -129,8 +131,8 @@
       <button data-zadd>+ Add zone</button><p class="mu xs">${devs.length ? devs.length + ' output devices found.' : 'No device list yet.'} Zone settings are saved in this browser on this computer.</p>`;
     },
     sounds() {
-      return `<h2>Sounds</h2><div class="card"><div class="row"><span>Listen on</span><select id="pz">${S.zones.map((z, i) => `<option value="${i}" ${sounds.pz == i ? 'selected' : ''}>Zone ${i + 1}: ${esc(z.name)}</option>`).join('')}</select><label class="big"><input type="file" id="up" accept="audio/*,video/mp4,video/webm" multiple> add your own files</label></div><p class="mu xs">Uploaded files stay on this computer (in the browser). Use only sounds you made, bought or that are free for public use. Good free sources: freesound.org (filter to CC0), pixabay.com/sound-effects, sonniss.com GDC free bundles, YouTube Audio Library. Check each license.</p></div>
-      <table>${sndList().map(s => `<tr><td>${esc(s.name)}</td><td class="mu xs">${s.custom ? 'your file' : 'made by Hauntica'}${s.loop ? ', loops' : ''}</td><td><button data-prev="${esc(s.id)}" class="${Z[sounds.pz] && Z[sounds.pz].voices['prev:' + s.id] ? 'on' : ''}">${Z[sounds.pz] && Z[sounds.pz].voices['prev:' + s.id] ? 'Stop' : 'Listen'}</button>${s.custom ? `<button data-delsnd="${esc(s.id)}" class="rec">Delete</button>` : ''}</td></tr>`).join('')}</table>`;
+      return `<h2>Sounds</h2><div class="card"><div class="row"><span>Listen on</span><select id="pz">${S.zones.map((z, i) => `<option value="${i}" ${sounds.pz == i ? 'selected' : ''}>Zone ${i + 1}: ${esc(z.name)}</option>`).join('')}</select><label class="big"><input type="file" id="up" accept="audio/*,video/mp4,video/webm" multiple> add your own files</label></div><div class="row"><button data-rec class="${rec ? 'rec on' : ''}">${rec ? 'Stop recording' : '&#127908; Record a voice line'}</button><label class="chk"><input type="checkbox" id="recfx" checked> make it deep and echoing</label><span class="mu xs">Saved as a one-shot for the Scare pads and Random scares.</span></div><p class="mu xs">Uploaded files stay on this computer (in the browser). Use only sounds you made, bought or that are free for public use. Good free sources: freesound.org (filter to CC0), pixabay.com/sound-effects, sonniss.com GDC free bundles, YouTube Audio Library. Check each license.</p></div>
+      <table>${sndList().map(s => `<tr><td>${esc(s.name)}</td><td class="mu xs">${s.custom ? 'your file' : 'made by Hauntica'}${s.loop ? ', loops' : ''}</td><td><button data-prev="${esc(s.id)}" class="${Z[sounds.pz] && Z[sounds.pz].voices['prev:' + s.id] ? 'on' : ''}">${Z[sounds.pz] && Z[sounds.pz].voices['prev:' + s.id] ? 'Stop' : 'Listen'}</button>${s.custom ? `<button data-oneshot="${esc(s.id)}">${s.loop ? 'Loops' : 'One shot'}</button><button data-delsnd="${esc(s.id)}" class="rec">Delete</button>` : ''}</td></tr>`).join('')}</table>`;
     },
     lights() {
       const hl = HL, ok = hl.supported();
@@ -211,11 +213,100 @@
     if (t.id === 'pz') { sounds.pz = +t.value; render(); return; }
     if (t.id === 'up') { for (const f of t.files) { const id = Date.now() + '' + Math.random().toString(36).slice(2, 6); await dbop('readwrite', s => s.put({ id, name: f.name.replace(/\.[^.]+$/, ''), blob: f })); } await loadCustom(); toast('Added ' + t.files.length + ' file(s)'); render(); }
   });
-  document.addEventListener('keydown', e => { if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return; if (e.key === 'Escape') { stopAll(); return; } const n = +e.key; if (n >= 1 && n <= 9 && S.scenes[n - 1]) playScene(S.scenes[n - 1].id); });
+  document.addEventListener('keydown', e => { if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return; if (e.key === 'Escape') { stopAll(); return; } if (e.key === 'p' || e.key === 'P') { panic(); return; } const n = +e.key; if (n >= 1 && n <= 9 && S.scenes[n - 1]) playScene(S.scenes[n - 1].id); });
   navigator.mediaDevices && navigator.mediaDevices.addEventListener && navigator.mediaDevices.addEventListener('devicechange', () => listDevices(false));
   $('#fade').value = S.fade; $('#fadev').textContent = S.fade + ' s';
+  /* ================= extras: one-shots, pads, random scares, show timeline, voice recorder, print sheet ================= */
+  async function oneShot(i, id, vol, dur) {
+    if (!armed) await arm(); const z = zone(i), b = await buf(z, id), def = sndList().find(x => x.id === id), t = z.ctx.currentTime, src = z.ctx.createBufferSource(), g = z.ctx.createGain();
+    let off = 0, d = b.duration; if (!def || def.loop) { d = Math.min(b.duration, dur || 5); off = Math.random() * (b.duration - d); }
+    const fi = def && !def.loop ? .01 : .4, fo = Math.min(.8, d / 3);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + fi); g.gain.setValueAtTime(vol, t + Math.max(fi, d - fo)); g.gain.linearRampToValueAtTime(0, t + d);
+    src.buffer = b; src.connect(g); g.connect(z.bus); src.start(t, off, d);
+  }
+  let evT = null;
+  function evStop() { clearTimeout(evT); evT = null; }
+  function evStart() {
+    evStop(); if (!S.events.on) return;
+    const next = () => { evT = setTimeout(async () => {
+      const E = S.events; if (E.on && armed && (!E.onlyPlaying || S.cur) && E.pool.length) { const id = E.pool[Math.random() * E.pool.length | 0], zs = E.zones.length ? E.zones : S.zones.map((_, i) => i), zi = zs[Math.random() * zs.length | 0]; if (S.zones[zi]) { try { await oneShot(zi, id, E.vol, 5); E.last = sndName(id) + ' in ' + S.zones[zi].name; const el = $('#evlast'); if (el) el.textContent = 'Last scare: ' + E.last; } catch (er) { } } }
+      next(); }, S.events.mean * 1000 * (.4 + Math.random() * 1.2)); };
+    next();
+  }
+  let showT = null, showI = -1, showEnd = 0, showTick = null;
+  function showGo(i) {
+    const st = S.show.steps; clearTimeout(showT); if (!st.length) return;
+    if (i >= st.length) { if (S.show.loop) i = 0; else { showStop(true); return; } }
+    showI = i; const step = st[i]; showEnd = Date.now() + step.min * 60000; playScene(step.scene); if (step.hit) setTimeout(() => hit('all'), 2500);
+    showT = setTimeout(() => showGo(showI + 1), step.min * 60000); clearInterval(showTick); showTick = setInterval(showInfo, 1000); if (tab === 'auto') render(); showInfo();
+  }
+  function showStop(done) { clearTimeout(showT); clearInterval(showTick); showT = null; showI = -1; if (done) toast('Show finished'); if (tab === 'auto') render(); }
+  function showInfo() { const el = $('#showinfo'); if (!el) return; if (showI < 0) { el.textContent = 'Show not running.'; return; } const st = S.show.steps[showI], left = Math.max(0, Math.round((showEnd - Date.now()) / 1000)), sc = S.scenes.find(x => x.id === st.scene); el.textContent = 'Now: step ' + (showI + 1) + ' of ' + S.show.steps.length + ', ' + (sc ? sc.name : '?') + ', ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') + ' left'; }
+  function panic() { evStop(); showStop(); stopAll(); if (window.HL && HL.lights.length) HL.set('solid', '#ffffff'); toast('PANIC: sound stopped, lights white'); }
+  function wavOf(chs, sr) { const n = chs[0].length, buf = new ArrayBuffer(44 + n * 2 * chs.length), v = new DataView(buf), w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); }; w(0, 'RIFF'); v.setUint32(4, 36 + n * 2 * chs.length, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, chs.length, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2 * chs.length, true); v.setUint16(32, 2 * chs.length, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2 * chs.length, true); let o = 44; for (let i = 0; i < n; i++) chs.forEach(c => { const x = Math.max(-1, Math.min(1, c[i])); v.setInt16(o, x < 0 ? x * 32768 : x * 32767, true); o += 2; }); return new Blob([buf], { type: 'audio/wav' }); }
+  async function spooky(blob) {   /* deeper, with a long echo, rendered offline */
+    const ac = new AudioContext(), src = await ac.decodeAudioData(await blob.arrayBuffer()); ac.close();
+    const rate = .8, len = Math.ceil(src.length / rate) + src.sampleRate * 2, oc = new OfflineAudioContext(1, len, src.sampleRate), s0 = oc.createBufferSource(); s0.buffer = src; s0.playbackRate.value = rate;
+    const dry = oc.createGain(), dl = oc.createDelay(1), fb = oc.createGain(), wet = oc.createGain(), lp = oc.createBiquadFilter(); dry.gain.value = 1; dl.delayTime.value = .27; fb.gain.value = .5; wet.gain.value = .6; lp.type = 'lowpass'; lp.frequency.value = 2600;
+    s0.connect(dry); dry.connect(oc.destination); s0.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(lp); lp.connect(wet); wet.connect(oc.destination); s0.start(); const out = await oc.startRendering(); return wavOf([out.getChannelData(0)], out.sampleRate);
+  }
+  let rec = null;
+  async function recToggle() {
+    if (rec) { rec.mr.stop(); return; }
+    try { const st = await navigator.mediaDevices.getUserMedia({ audio: true }), mr = new MediaRecorder(st), ch = []; rec = { mr }; mr.ondataavailable = e => ch.push(e.data);
+      mr.onstop = async () => { st.getTracks().forEach(t => t.stop()); rec = null; let blob = new Blob(ch, { type: mr.mimeType }); const fx = $('#recfx') && $('#recfx').checked; try { if (fx) blob = await spooky(blob); } catch (er) { toast('Could not add the effect; saved plain'); } const name = prompt('Name this recording', 'Voice ' + (custom.length + 1)); if (name) { await dbop('readwrite', q => q.put({ id: Date.now() + '', name, blob, oneshot: true })); await loadCustom(); toast('Saved. Find it under Sounds and on the Pads tab.'); } render(); };
+      mr.start(); render(); } catch (er) { toast('Could not use the microphone'); }
+  }
+  const SCARE = ['stinger', 'slam', 'riser', 'banshee', 'demon', 'howl', 'knock', 'scratch', 'creak', 'whispers', 'chains', 'bell', 'steps', 'breath', 'heart', 'cauldron', 'flies', 'scrape', 'choir', 'organ', 'musicbox', 'radio', 'thunder', 'drips'];
+  let padZone = 'all';
+  views.pads = () => `<h2>Scare pads</h2><div class="card"><div class="row"><span>Send to</span><button data-pz="all" class="${padZone === 'all' ? 'on' : ''}">All zones</button>${S.zones.map((z, i) => `<button data-pz="${i}" class="${padZone === String(i) ? 'on' : ''}">${i + 1}: ${esc(z.name)}</button>`).join('')}</div><p class="mu xs">Tap a pad to play that sound once (loops play a short random piece). Your recorded voice lines are at the end.</p></div>
+    <div class="grid">${SCARE.map(id => `<button class="scene" data-pad="${id}" style="min-height:62px">${esc(sndName(id))}</button>`).join('')}${custom.filter(c => c.oneshot).map(c => `<button class="scene" data-pad="c:${esc(c.id)}" style="min-height:62px">&#127908; ${esc(c.name)}</button>`).join('')}</div>`;
+  views.auto = () => { const E = S.events, sh = S.show; return `<h2>Random scares</h2><div class="card"><div class="row"><button data-evon class="${E.on ? 'on' : ''}">${E.on ? 'Random scares are ON' : 'Random scares are off'}</button><label class="chk"><input type="checkbox" data-evonly ${E.onlyPlaying ? 'checked' : ''}> only while a scene is playing</label></div>
+      <div class="row"><span>About one every</span><input type="range" min="10" max="180" step="5" value="${E.mean}" data-evmean><b id="evmeanv">${E.mean} s</b><span class="mu xs">volume</span><input type="range" min=".2" max="1" step=".05" value="${E.vol}" data-evvol></div>
+      <div class="row"><span class="mu xs">Zones:</span>${S.zones.map((z, i) => `<label class="chk"><input type="checkbox" data-evz="${i}" ${!E.zones.length || E.zones.includes(i) ? 'checked' : ''}> ${esc(z.name)}</label>`).join('')}</div>
+      <div class="row"><span class="mu xs">Sounds that can pop up:</span>${SCARE.concat(custom.filter(c => c.oneshot).map(c => 'c:' + c.id)).map(id => `<label class="chk"><input type="checkbox" data-evs="${esc(id)}" ${E.pool.includes(id) ? 'checked' : ''}> ${esc(sndName(id))}</label>`).join('')}</div><p class="xs mu" id="evlast">${E.last ? 'Last scare: ' + esc(E.last) : 'Nothing has fired yet.'}</p></div>
+    <h2>Show timeline</h2><div class="card"><p class="xs mu">Runs your scenes one after another by itself. Each step plays its scene for the minutes you set, then fades to the next.</p>
+      ${sh.steps.map((st, i) => `<div class="row"><b>${i + 1}</b><select data-shs="${i}">${S.scenes.map(x => `<option value="${x.id}" ${x.id === st.scene ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><input type="number" min="1" max="120" value="${st.min}" data-shm="${i}" style="width:64px"> min<label class="chk"><input type="checkbox" data-shh="${i}" ${st.hit ? 'checked' : ''}> big hit at start</label><button data-shdel="${i}" class="rec">x</button></div>`).join('')}
+      <div class="row"><button data-shadd>+ Add step</button><label class="chk"><input type="checkbox" data-shloop ${sh.loop ? 'checked' : ''}> repeat from the start</label></div>
+      <div class="row"><button class="big ok" data-shgo>${showI < 0 ? 'Start show' : 'Restart show'}</button><button data-shnext>Next step</button><button data-shstop class="rec">Stop show</button></div><p id="showinfo" class="xs">Show not running.</p></div>`; };
+  views.print = () => `<h2>Setup sheet</h2><div class="card"><button data-doprint class="big">Print this page</button><p class="mu xs">Fill in the speaker notes, then print and tape it up in the control room.</p></div>
+    <div class="card"><table><tr><th>#</th><th>Zone</th><th>Output device</th><th>Channel</th><th>Speaker, cable and notes</th></tr>${S.zones.map((z, i) => `<tr><td>${i + 1}</td><td>${esc(z.name)}</td><td class="xs">${esc(z.dev === 'default' ? 'Computer default' : ((devs.find(d => d.deviceId === z.dev) || {}).label || 'selected device'))}</td><td>${z.ch === 'both' ? 'Stereo' : z.ch === 'L' ? 'Left' : 'Right'}</td><td><input type="text" data-znote="${i}" value="${esc(z.note || '')}" placeholder="e.g. Scarlett A out 1, mixer ch 1, cave amp" style="width:100%"></td></tr>`).join('')}</table></div>
+    <div class="card"><h3>Before guests arrive</h3><ol><li>Both Scarletts and the mixer powered on, faders down.</li><li>Open Hauntica in Chrome or Edge. Press Arm audio.</li><li>Zones tab: Test all zones in turn. Walk every speaker.</li><li>Lights tab: connect each light, test red, green, blue.</li><li>Computer sleep off. Phone silenced.</li><li>Press Panic (top) to practice stopping everything.</li></ol></div>`;
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+    if (b.id === 'panic') { panic(); return; }
+    if (d.pz != null && d.pz !== '') { padZone = d.pz; render(); return; }
+    if (d.pad) { const zs = padZone === 'all' ? S.zones.map((_, i) => i) : [+padZone]; zs.forEach(i => oneShot(i, d.pad, .9, 6).catch(() => { })); if (d.pad === 'stinger' && padZone === 'all') hit('all'); return; }
+    if (d.evon != null) { S.events.on = !S.events.on; save(); evStart(); render(); return; }
+    if (d.shadd != null) { S.show.steps.push({ scene: S.scenes[0].id, min: 15, hit: false }); save(); render(); return; }
+    if (d.shdel) { S.show.steps.splice(+d.shdel, 1); save(); render(); return; }
+    if (d.shgo != null) { if (!armed) await arm(); showGo(0); return; }
+    if (d.shnext != null) { if (showI >= 0) showGo(showI + 1); return; }
+    if (d.shstop != null) { showStop(); return; }
+    if (d.doprint != null) { window.print(); return; }
+    if (d.rec != null) { recToggle(); return; }
+    if (d.oneshot) { const id = d.oneshot.slice(2), r = custom.find(c => c.id === id); if (r) { r.oneshot = !r.oneshot; await dbop('readwrite', q => q.put(r)); } render(); return; }
+    if (d.flash != null) { S.flash = S.flash === false; save(); render(); return; }
+  });
+  document.addEventListener('input', e => {
+    const t = e.target, d = t.dataset;
+    if (d.evmean != null) { S.events.mean = +t.value; $('#evmeanv').textContent = t.value + ' s'; save(); return; }
+    if (d.evvol != null) { S.events.vol = +t.value; save(); return; }
+    if (d.shm != null) { S.show.steps[+d.shm].min = Math.max(1, +t.value || 1); save(); return; }
+    if (d.znote != null) { S.zones[+d.znote].note = t.value; save(); }
+  });
+  document.addEventListener('change', e => {
+    const t = e.target, d = t.dataset;
+    if (d.evonly != null) { S.events.onlyPlaying = t.checked; save(); return; }
+    if (d.evz != null) { const all = S.zones.map((_, i) => i), cur = S.events.zones.length ? S.events.zones : all, i = +d.evz; let n = t.checked ? cur.concat(i) : cur.filter(x => x !== i); n = [...new Set(n)]; S.events.zones = n.length === all.length || !n.length ? [] : n; save(); return; }
+    if (d.evs != null) { const p = S.events.pool; S.events.pool = t.checked ? [...new Set(p.concat(d.evs))] : p.filter(x => x !== d.evs); save(); return; }
+    if (d.shs != null) { S.show.steps[+d.shs].scene = t.value; save(); return; }
+    if (d.shh != null) { S.show.steps[+d.shh].hit = t.checked; save(); return; }
+    if (d.shloop != null) { S.show.loop = t.checked; save(); return; }
+  });
   window.HAUNT = { S, Z, playScene, stopAll, hit, arm, zone, buf, sndList };
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
   HL.onchange = () => { if (tab === 'lights' || tab === 'edit') render(); };
+  evStart();
   loadCustom().then(() => listDevices(false)).then(render);
 })();
