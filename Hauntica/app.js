@@ -46,6 +46,9 @@
   const sndName = id => { const s = sndList().find(x => x.id === id); return s ? s.name : id + ' (missing)'; };
 
   /* ---- audio engine: one AudioContext per zone, sent to that zone's output device ---- */
+  let dev = { mine: null }; try { dev = Object.assign(dev, JSON.parse(localStorage.getItem('hauntica-device') || '{}')); } catch (e) { }
+  const saveDev = () => { try { localStorage.setItem('hauntica-device', JSON.stringify(dev)); } catch (e) { } };
+  const mine = i => !dev.mine || !dev.mine.length || dev.mine.includes(i);
   const Z = [];
   function zone(i) {
     if (Z[i] && Z[i].ctx.state !== 'closed') return Z[i];
@@ -69,6 +72,7 @@
     return z.bufs[id] = b;
   }
   async function startCue(i, c, fade) {
+    if (!mine(i)) return;
     const z = zone(i), t = z.ctx.currentTime, v = z.voices[c.snd];
     if (v) { v.g.gain.cancelScheduledValues(t); v.g.gain.setTargetAtTime(c.vol, t, .3); v.keep = true; return; }
     let b; try { b = await buf(z, c.snd); } catch (e) { toast('Could not load ' + sndName(c.snd)); return; }
@@ -79,19 +83,20 @@
     const vo = z.voices[c.snd] = { src, g, keep: true }; src.onended = () => { if (z.voices[c.snd] === vo) delete z.voices[c.snd]; refresh(); };
   }
   function fadeOut(z, key, fade) { const v = z.voices[key]; if (!v) return; const t = z.ctx.currentTime; v.g.gain.cancelScheduledValues(t); v.g.gain.setValueAtTime(v.g.gain.value, t); v.g.gain.linearRampToValueAtTime(0, t + Math.max(.02, fade)); try { v.src.stop(t + fade + .05); } catch (e) { } delete z.voices[key]; }
-  async function arm() { for (let i = 0; i < S.zones.length; i++) { const z = zone(i); try { await z.ctx.resume(); } catch (e) { } } armed = true; $('#arm').textContent = 'Audio armed'; $('#arm').classList.add('ok'); }
+  async function arm() { for (let i = 0; i < S.zones.length; i++) { if (!mine(i)) continue; const z = zone(i); try { await z.ctx.resume(); } catch (e) { } } armed = true; $('#arm').textContent = 'Audio armed'; $('#arm').classList.add('ok'); }
   async function playScene(id) {
     if (!armed) await arm();
     const sc = S.scenes.find(s => s.id === id); if (!sc) return; S.cur = id; save();
     const want = {}; sc.cues.forEach(c => { want[c.zone + '|' + c.snd] = 1; });
     Z.forEach((z, i) => { if (!z) return; Object.keys(z.voices).forEach(k => { if (!want[i + '|' + k] && !k.startsWith('prev:')) fadeOut(z, k, S.fade); }); });
     const lt = lightOf(sc); if (window.HL && HL.lights.length) HL.set(lt.mode, lt.color);
-    await Promise.all(sc.cues.filter(c => S.zones[c.zone]).map(c => startCue(c.zone, c, S.fade))); refresh();
+    await Promise.all(sc.cues.filter(c => S.zones[c.zone] && mine(c.zone)).map(c => startCue(c.zone, c, S.fade))); refresh();
   }
   function stopAll() { Z.forEach(z => { if (z) Object.keys(z.voices).forEach(k => fadeOut(z, k, 1.2)); }); S.cur = null; save(); if (window.HL && HL.lights.length) HL.set('off'); refresh(); }
-  async function hit(which, snd) { snd = snd || 'stinger'; if (!armed) await arm(); if (snd === 'stinger' && window.HL && HL.lights.length && S.flash !== false) { const m = HL.mode, c = HL.color; HL.set('solid', '#ffffff'); setTimeout(() => HL.set(m, c), 220); } const zs = which === 'all' ? S.zones.map((_, i) => i) : [which]; for (const i of zs) { const z = zone(i), b = await buf(z, snd), s = z.ctx.createBufferSource(), g = z.ctx.createGain(); s.buffer = b; g.gain.value = 1; s.connect(g); g.connect(z.bus); s.start(); } }
+  async function hit(which, snd) { snd = snd || 'stinger'; if (!armed) await arm(); if (snd === 'stinger' && window.HL && HL.lights.length && S.flash !== false) { const m = HL.mode, c = HL.color; HL.set('solid', '#ffffff'); setTimeout(() => HL.set(m, c), 220); } const zs = which === 'all' ? S.zones.map((_, i) => i) : [which]; for (const i of zs.filter(mine)) { const z = zone(i), b = await buf(z, snd), s = z.ctx.createBufferSource(), g = z.ctx.createGain(); s.buffer = b; g.gain.value = 1; s.connect(g); g.connect(z.bus); s.start(); } }
   async function preview(i, id) { if (!armed) await arm(); const z = zone(i), k = 'prev:' + id; if (z.voices[k]) { fadeOut(z, k, .3); refresh(); return; } const b = await buf(z, id), s = z.ctx.createBufferSource(), g = z.ctx.createGain(); s.buffer = b; s.loop = true; g.gain.value = .7; s.connect(g); g.connect(z.bus); s.start(); const vo = z.voices[k] = { src: s, g }; s.onended = () => { if (z.voices[k] === vo) delete z.voices[k]; refresh(); }; setTimeout(() => { if (z.voices[k] === vo) { fadeOut(z, k, 1); refresh(); } }, 20000); refresh(); }
   async function testZone(i) {
+    if (!mine(i)) { toast('Zone ' + (i + 1) + ' belongs to the other computer'); return; }
     if (!armed) await arm(); const z = zone(i); applyZone(i); const t0 = z.ctx.currentTime + .1;
     for (let k = 0; k <= i; k++) { const o = z.ctx.createOscillator(), g = z.ctx.createGain(); o.frequency.value = 660; g.gain.setValueAtTime(0, t0 + k * .5); g.gain.linearRampToValueAtTime(.35, t0 + k * .5 + .02); g.gain.linearRampToValueAtTime(0, t0 + k * .5 + .3); o.connect(g); g.connect(z.bus); o.start(t0 + k * .5); o.stop(t0 + k * .5 + .35); }
     toast('Zone ' + (i + 1) + ' (' + S.zones[i].name + '): ' + (i + 1) + ' beep' + (i ? 's' : ''));
@@ -164,9 +169,9 @@
     const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
     if (d.t) { tab = d.t; render(); return; }
     if (b.id === 'arm') { await arm(); toast('Audio armed'); render(); return; }
-    if (b.id === 'stopall') { stopAll(); return; }
-    if (d.play) { playScene(d.play); return; }
-    if (d.hit) { if (d.hit === 'build') { hit('all', 'riser'); setTimeout(() => hit('all'), 8000); toast('Building... hit in 8 seconds'); return; } const [w, sn] = d.hit.split('|'); hit(w === 'all' ? 'all' : +w, sn); return; }
+    if (b.id === 'stopall') { act({ cmd: 'stop' }); return; }
+    if (d.play) { act({ cmd: 'scene', id: d.play }); return; }
+    if (d.hit) { if (d.hit === 'build') { act({ cmd: 'build' }); toast('Building... hit in 8 seconds'); return; } const [w, sn] = d.hit.split('|'); act({ cmd: 'hit', zone: w === 'all' ? 'all' : +w, snd: sn }); return; }
     if (d.zmute) { const c = S.zones[+d.zmute]; c.mute = !c.mute; save(); applyZone(+d.zmute); render(); return; }
     if (d.devs) { listDevices(true); return; }
     if (d.ztest) { testZone(+d.ztest); return; }
@@ -214,12 +219,12 @@
     if (t.id === 'pz') { sounds.pz = +t.value; render(); return; }
     if (t.id === 'up') { for (const f of t.files) { const id = Date.now() + '' + Math.random().toString(36).slice(2, 6); await dbop('readwrite', s => s.put({ id, name: f.name.replace(/\.[^.]+$/, ''), blob: f })); } await loadCustom(); toast('Added ' + t.files.length + ' file(s)'); render(); }
   });
-  document.addEventListener('keydown', e => { if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return; if (e.key === 'Escape') { stopAll(); return; } if (e.key === 'p' || e.key === 'P') { panic(); return; } const n = +e.key; if (n >= 1 && n <= 9 && S.scenes[n - 1]) playScene(S.scenes[n - 1].id); });
+  document.addEventListener('keydown', e => { if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return; if (e.key === 'Escape') { act({ cmd: 'stop' }); return; } if (e.key === 'p' || e.key === 'P') { act({ cmd: 'panic' }); return; } const n = +e.key; if (n >= 1 && n <= 9 && S.scenes[n - 1]) act({ cmd: 'scene', id: S.scenes[n - 1].id }); });
   navigator.mediaDevices && navigator.mediaDevices.addEventListener && navigator.mediaDevices.addEventListener('devicechange', () => listDevices(false));
   $('#fade').value = S.fade; $('#fadev').textContent = S.fade + ' s';
   /* ================= extras: one-shots, pads, random scares, show timeline, voice recorder, print sheet ================= */
   async function oneShot(i, id, vol, dur) {
-    if (!armed) await arm(); const z = zone(i), b = await buf(z, id), def = sndList().find(x => x.id === id), t = z.ctx.currentTime, src = z.ctx.createBufferSource(), g = z.ctx.createGain();
+    if (!mine(i)) return; if (!armed) await arm(); const z = zone(i), b = await buf(z, id), def = sndList().find(x => x.id === id), t = z.ctx.currentTime, src = z.ctx.createBufferSource(), g = z.ctx.createGain();
     let off = 0, d = b.duration; if (!def || def.loop) { d = Math.min(b.duration, dur || 5); off = Math.random() * (b.duration - d); }
     const fi = def && !def.loop ? .01 : .4, fo = Math.min(.8, d / 3);
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + fi); g.gain.setValueAtTime(vol, t + Math.max(fi, d - fo)); g.gain.linearRampToValueAtTime(0, t + d);
@@ -230,7 +235,7 @@
   function evStart() {
     evStop(); if (!S.events.on) return;
     const next = () => { evT = setTimeout(async () => {
-      const E = S.events; if (E.on && armed && (!E.onlyPlaying || S.cur) && E.pool.length) { const id = E.pool[Math.random() * E.pool.length | 0], zs = E.zones.length ? E.zones : S.zones.map((_, i) => i), zi = zs[Math.random() * zs.length | 0]; if (S.zones[zi]) { try { await oneShot(zi, id, E.vol, 5); E.last = sndName(id) + ' in ' + S.zones[zi].name; const el = $('#evlast'); if (el) el.textContent = 'Last scare: ' + E.last; } catch (er) { } } }
+      const E = S.events; if (E.on && armed && (!E.onlyPlaying || S.cur) && E.pool.length) { const id = E.pool[Math.random() * E.pool.length | 0], zs = (E.zones.length ? E.zones : S.zones.map((_, i) => i)).filter(mine), zi = zs[Math.random() * zs.length | 0]; if (S.zones[zi]) { try { await oneShot(zi, id, E.vol, 5); E.last = sndName(id) + ' in ' + S.zones[zi].name; const el = $('#evlast'); if (el) el.textContent = 'Last scare: ' + E.last; } catch (er) { } } }
       next(); }, S.events.mean * 1000 * (.4 + Math.random() * 1.2)); };
     next();
   }
@@ -265,11 +270,13 @@
   let rem = { es: null, ok: false, timer: null };
   const REMOTE = 'http://localhost:8787';
   function padList() { return ['banshee', 'demon', 'howl', 'knock', 'scratch', 'creak', 'whispers', 'chains', 'bell', 'steps', 'thunder', 'heart'].concat(custom.filter(c => c.oneshot).map(c => 'c:' + c.id)).map(id => ({ id, name: sndName(id) })); }
+  /* every button that should reach all linked computers goes through act() */
+  function act(m) { remoteCmd(m); peerSend(m); }
   function remoteCmd(m) {
     if (m.cmd === 'scene') playScene(m.id); else if (m.cmd === 'stop') stopAll(); else if (m.cmd === 'panic') panic();
-    else if (m.cmd === 'hit') hit(m.zone === 'all' ? 'all' : +m.zone); else if (m.cmd === 'build') { hit('all', 'riser'); setTimeout(() => hit('all'), 8000); }
-    else if (m.cmd === 'pad') { const zs = m.zone === 'all' ? S.zones.map((_, i) => i) : [+m.zone]; zs.forEach(i => oneShot(i, m.snd, .9, 6).catch(() => { })); if (m.snd === 'stinger') hit('all'); }
-    else if (m.cmd === 'evtoggle') { S.events.on = !S.events.on; save(); evStart(); if (tab === 'auto') render(); }
+    else if (m.cmd === 'hit') hit(m.zone === 'all' ? 'all' : +m.zone, m.snd); else if (m.cmd === 'build') { hit('all', 'riser'); setTimeout(() => hit('all'), 8000); }
+    else if (m.cmd === 'pad') { const zs = m.zone === 'all' ? S.zones.map((_, i) => i) : [+m.zone]; zs.forEach(i => oneShot(i, m.snd, .9, 6).catch(() => { })); if (m.snd === 'stinger' && m.zone === 'all') hit('all'); }
+    else if (m.cmd === 'evtoggle') act({ cmd: 'evset', on: !S.events.on }); else if (m.cmd === 'evset') { S.events.on = !!m.on; save(); evStart(); if (tab === 'auto') render(); }
     else if (m.cmd === 'showgo') { (async () => { if (!armed) await arm(); showGo(0); })(); } else if (m.cmd === 'shownext') { if (showI >= 0) showGo(showI + 1); } else if (m.cmd === 'showstop') showStop();
   }
   function remotePush() { if (!rem.es) return; const el = $('#showinfo'); fetch(REMOTE + '/state', { method: 'POST', headers: { 'x-pin': S.remote.pin, 'content-type': 'application/json' }, body: JSON.stringify({ scenes: S.scenes.map(x => ({ id: x.id, name: x.name })), cur: S.cur, pads: padList(), zones: S.zones.map(z => z.name), events: !!S.events.on, show: showI >= 0 && el ? el.textContent : (showI >= 0 ? 'Show running, step ' + (showI + 1) : '') }) }).catch(() => { }); }
@@ -278,7 +285,7 @@
     if (rem.es) rem.es.close(); clearInterval(rem.timer); S.remote = { on: true, pin }; save();
     const es = rem.es = new EventSource(REMOTE + '/events?pin=' + encodeURIComponent(pin));
     es.onopen = () => { rem.ok = true; if (tab === 'auto') render(); remotePush(); }; es.onerror = () => { if (rem.ok) { rem.ok = false; if (tab === 'auto') render(); } };
-    es.onmessage = e => { try { remoteCmd(JSON.parse(e.data)); } catch (er) { } }; rem.timer = setInterval(remotePush, 1500);
+    es.onmessage = e => { try { act(JSON.parse(e.data)); } catch (er) { } }; rem.timer = setInterval(remotePush, 1500);
   }
   /* ---- export: mix a zone of a scene into one file for a USB stick or radio; or download one sound ---- */
   let exp = { scene: null, zone: 0, min: 3, fmt: 'mp3', busy: false };
@@ -327,6 +334,49 @@
     if (d.roff != null) { remoteOff(); return; }
   });
   document.addEventListener('change', e => { const t = e.target, d = t.dataset; if (d.expsc != null) exp.scene = t.value; else if (d.expz != null) exp.zone = +t.value; else if (d.expm != null) exp.min = +t.value; else if (d.expf != null) exp.fmt = t.value; });
+  /* ---- link another computer (WebRTC, pasted codes, no server) and copy settings ---- */
+  const peers = []; let pend = null, devName = 'Computer ' + (Math.random() * 90 + 10 | 0);
+  const b64 = o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))), unb64 = t => JSON.parse(decodeURIComponent(escape(atob(t.trim().replace(/\s+/g, '')))));
+  function peerSend(m) { const t = JSON.stringify({ t: 'cmd', m }); peers.forEach(p => { try { if (p.dc && p.dc.readyState === 'open') p.dc.send(t); } catch (e) { } }); }
+  function peerWire(p) {
+    p.dc.onopen = () => { p.ok = true; toast('Linked with another computer'); if (tab === 'auto') render(); };
+    p.dc.onclose = () => { p.ok = false; if (tab === 'auto') render(); };
+    p.dc.onmessage = e => { let o; try { o = JSON.parse(e.data); } catch (er) { return; } if (o.t === 'cmd') remoteCmd(o.m); else if (o.t === 'settings') applySettings(o.s, true); };
+  }
+  function newPC() { return new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); }
+  const gathered = pc => new Promise(ok => { if (pc.iceGatheringState === 'complete') return ok(); const t = setTimeout(ok, 4000); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); ok(); } }); });
+  async function linkStart() { const pc = newPC(), p = { pc, ok: false }; p.dc = pc.createDataChannel('h'); peerWire(p); await pc.setLocalDescription(await pc.createOffer()); await gathered(pc); pend = p; peers.push(p); return b64({ k: 'offer', d: pc.localDescription }); }
+  async function linkJoin(code) { const o = unb64(code); if (o.k !== 'offer') throw new Error('That is not an offer code'); const pc = newPC(), p = { pc, ok: false }; pc.ondatachannel = e => { p.dc = e.channel; peerWire(p); }; await pc.setRemoteDescription(o.d); await pc.setLocalDescription(await pc.createAnswer()); await gathered(pc); peers.push(p); return b64({ k: 'answer', d: pc.localDescription }); }
+  async function linkFinish(code) { const o = unb64(code); if (o.k !== 'answer' || !pend) throw new Error('Start a link first, then paste the answer code'); await pend.pc.setRemoteDescription(o.d); pend = null; }
+  const settingsOf = () => ({ zones: S.zones, scenes: S.scenes, events: S.events, show: S.show, videos: S.videos, fade: S.fade, flash: S.flash });
+  function applySettings(inc, ask) {
+    if (!inc || !inc.zones || !inc.scenes) { toast('That file is not Hauntica settings'); return; }
+    if (ask && !confirm('The other computer wants to replace this computer\'s scenes and zone names with its own. Output devices on this computer stay as they are. Continue?')) return;
+    const old = S.zones; S = Object.assign(S, inc, { ver: 4, remote: S.remote, cur: null }); S.zones = inc.zones.map((z, i) => ({ ...z, dev: old[i] ? old[i].dev : 'default', ch: old[i] ? old[i].ch : z.ch }));
+    save(); toast('Settings copied'); render();
+  }
+  views.devices = () => '';
+  const zonesOld = views.zones;
+  views.zones = () => `<div class="card warn"><h3>This computer plays these zones</h3><p class="xs">Using two computers? Tick only the zones whose speakers are plugged into <b>this</b> computer. Each computer then plays just its own part of every scene. Leave all ticked if this is the only computer.</p><div class="row">${S.zones.map((z, i) => `<label class="chk"><input type="checkbox" data-mine="${i}" ${mine(i) ? 'checked' : ''}> ${i + 1}: ${esc(z.name)}</label>`).join('')}</div></div>` + zonesOld();
+  const wrapAuto2 = () => { views.auto = (f => () => f() + `<h2>Link another computer</h2><div class="card"><p class="xs mu">Link two Hauntica computers so that pressing a scene, a jump scare, Stop or Panic on either one does it on both. Both computers must be on the same Wi-Fi. No server is needed: you copy two codes between them (text message, email or chat to yourself).</p>
+    <div class="row"><span class="xs ${peers.some(p => p.ok) ? '' : 'mu'}">${peers.filter(p => p.ok).length ? '<span class="dot live"></span> ' + peers.filter(p => p.ok).length + ' computer(s) linked' : 'not linked'}</span></div>
+    <h3>Computer A (start)</h3><div class="row"><button data-lk1>1. Make a link code</button></div><textarea id="lkcode" rows="3" style="width:100%;background:#0a0408;color:var(--tx);border:1px solid var(--ln);border-radius:8px" readonly placeholder="the code appears here: copy it to the other computer"></textarea><div class="row"><button data-lkcopy>Copy code</button></div>
+    <h3>Computer B (join)</h3><div class="row"><span class="xs mu">Paste A's code, then press Make answer, and copy the answer back to A.</span></div><textarea id="lkin" rows="3" style="width:100%;background:#0a0408;color:var(--tx);border:1px solid var(--ln);border-radius:8px" placeholder="paste the code here"></textarea><div class="row"><button data-lk2>2. Make answer (on B)</button><button data-lk3>3. Finish (on A, with B's answer pasted above)</button></div></div>
+    <h2>Copy settings</h2><div class="card"><p class="xs mu">Copies zone names, scenes, show timeline and random-scare settings. Output devices stay as set on each computer. Your own recorded or uploaded sound files are not copied: add them on each computer.</p><div class="row"><button data-sendset ${peers.some(p => p.ok) ? '' : 'disabled'}>Send my settings to linked computers</button><button data-expset>Save settings to a file</button><label class="big"><input type="file" id="impset" accept=".json"> load from file</label></div></div>`)(views.auto); };
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+    try {
+      if (d.lk1 != null) { $('#lkcode').value = 'working...'; $('#lkcode').value = await linkStart(); return; }
+      if (d.lkcopy != null) { const t = $('#lkcode'); t.select(); try { await navigator.clipboard.writeText(t.value); toast('Copied'); } catch (er) { document.execCommand('copy'); } return; }
+      if (d.lk2 != null) { $('#lkcode').value = 'working...'; $('#lkcode').value = await linkJoin($('#lkin').value); toast('Now copy the answer code back to computer A'); return; }
+      if (d.lk3 != null) { await linkFinish($('#lkin').value); toast('Connecting...'); return; }
+    } catch (er) { toast(er.message || 'That did not work. Start again.'); return; }
+    if (d.sendset != null) { const t = JSON.stringify({ t: 'settings', s: settingsOf() }); peers.forEach(p => { try { if (p.dc.readyState === 'open') p.dc.send(t); } catch (er) { } }); toast('Sent'); return; }
+    if (d.expset != null) { saveBlob(new Blob([JSON.stringify(settingsOf(), null, 1)], { type: 'application/json' }), 'hauntica-settings.json'); return; }
+  });
+  document.addEventListener('change', async e => { const t = e.target, d = t.dataset;
+    if (d.mine != null) { const all = S.zones.map((_, i) => i); let m = (dev.mine && dev.mine.length ? dev.mine : all).slice(); const i = +d.mine; m = t.checked ? [...new Set(m.concat(i))] : m.filter(x => x !== i); dev.mine = m.length === all.length ? null : m; if (!m.length) { dev.mine = null; toast('At least one zone must stay ticked'); render(); } saveDev(); return; }
+    if (t.id === 'impset' && t.files[0]) { try { applySettings(JSON.parse(await t.files[0].text()), false); } catch (er) { toast('Could not read that file'); } } });
   const SCARE = ['stinger', 'slam', 'riser', 'banshee', 'demon', 'howl', 'knock', 'scratch', 'creak', 'whispers', 'chains', 'bell', 'steps', 'breath', 'heart', 'cauldron', 'flies', 'scrape', 'choir', 'organ', 'musicbox', 'radio', 'thunder', 'drips'];
   let padZone = 'all';
   views.pads = () => `<h2>Scare pads</h2><div class="card"><div class="row"><span>Send to</span><button data-pz="all" class="${padZone === 'all' ? 'on' : ''}">All zones</button>${S.zones.map((z, i) => `<button data-pz="${i}" class="${padZone === String(i) ? 'on' : ''}">${i + 1}: ${esc(z.name)}</button>`).join('')}</div><p class="mu xs">Tap a pad to play that sound once (loops play a short random piece). Your recorded voice lines are at the end.</p></div>
@@ -344,15 +394,15 @@
     <div class="card"><h3>Before guests arrive</h3><ol><li>Both Scarletts and the mixer powered on, faders down.</li><li>Open Hauntica in Chrome or Edge. Press Arm audio.</li><li>Zones tab: Test all zones in turn. Walk every speaker.</li><li>Lights tab: connect each light, test red, green, blue.</li><li>Computer sleep off. Phone silenced.</li><li>Press Panic (top) to practice stopping everything.</li></ol></div>`;
   document.addEventListener('click', async e => {
     const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
-    if (b.id === 'panic') { panic(); return; }
+    if (b.id === 'panic') { act({ cmd: 'panic' }); return; }
     if (d.pz != null && d.pz !== '') { padZone = d.pz; render(); return; }
-    if (d.pad) { const zs = padZone === 'all' ? S.zones.map((_, i) => i) : [+padZone]; zs.forEach(i => oneShot(i, d.pad, .9, 6).catch(() => { })); if (d.pad === 'stinger' && padZone === 'all') hit('all'); return; }
-    if (d.evon != null) { S.events.on = !S.events.on; save(); evStart(); render(); return; }
+    if (d.pad) { act({ cmd: 'pad', snd: d.pad, zone: padZone === 'all' ? 'all' : +padZone }); return; }
+    if (d.evon != null) { act({ cmd: 'evset', on: !S.events.on }); return; }
     if (d.shadd != null) { S.show.steps.push({ scene: S.scenes[0].id, min: 15, hit: false }); save(); render(); return; }
     if (d.shdel) { S.show.steps.splice(+d.shdel, 1); save(); render(); return; }
-    if (d.shgo != null) { if (!armed) await arm(); showGo(0); return; }
-    if (d.shnext != null) { if (showI >= 0) showGo(showI + 1); return; }
-    if (d.shstop != null) { showStop(); return; }
+    if (d.shgo != null) { act({ cmd: 'showgo' }); return; }
+    if (d.shnext != null) { act({ cmd: 'shownext' }); return; }
+    if (d.shstop != null) { act({ cmd: 'showstop' }); return; }
     if (d.doprint != null) { window.print(); return; }
     if (d.rec != null) { recToggle(); return; }
     if (d.oneshot) { const id = d.oneshot.slice(2), r = custom.find(c => c.id === id); if (r) { r.oneshot = !r.oneshot; await dbop('readwrite', q => q.put(r)); } render(); return; }
@@ -374,7 +424,7 @@
     if (d.shh != null) { S.show.steps[+d.shh].hit = t.checked; save(); return; }
     if (d.shloop != null) { S.show.loop = t.checked; save(); return; }
   });
-  wrapAuto();
+  wrapAuto(); wrapAuto2();
   if (S.remote && S.remote.on && S.remote.pin) setTimeout(() => remoteOn(S.remote.pin), 600);
   window.HAUNT = { S, Z, playScene, stopAll, hit, arm, zone, buf, sndList };
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
