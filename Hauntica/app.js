@@ -4,6 +4,8 @@
   const KEY = 'hauntica-v1';
   const ZN = ['Front porch', 'Hallway', 'Living room', 'Basement'];
   const cue = (zone, snd, vol) => ({ zone, snd, vol });
+  const DL = { s1: ['lightning', '#7a9bff'], s2: ['flicker', '#ff8a2a'], s3: ['pulse', '#ff1a1a'], s4: ['fire', '#ff5a00'], s5: ['breathe', '#2a5bff'], s6: ['breathe', '#7a00c8'] };
+  const lightOf = sc => sc.light || (DL[sc.id] ? { mode: DL[sc.id][0], color: DL[sc.id][1] } : { mode: 'off', color: '#ff2a00' });
   const DEF = () => ({
     fade: 2, cur: null,
     zones: ZN.map((n, i) => ({ name: n, dev: 'default', ch: i === 0 ? 'L' : i === 1 ? 'R' : 'both', vol: .85, mute: false })),
@@ -69,9 +71,10 @@
     const sc = S.scenes.find(s => s.id === id); if (!sc) return; S.cur = id; save();
     const want = {}; sc.cues.forEach(c => { want[c.zone + '|' + c.snd] = 1; });
     Z.forEach((z, i) => { if (!z) return; Object.keys(z.voices).forEach(k => { if (!want[i + '|' + k] && !k.startsWith('prev:')) fadeOut(z, k, S.fade); }); });
+    const lt = lightOf(sc); if (window.HL && HL.lights.length) HL.set(lt.mode, lt.color);
     await Promise.all(sc.cues.filter(c => S.zones[c.zone]).map(c => startCue(c.zone, c, S.fade))); refresh();
   }
-  function stopAll() { Z.forEach(z => { if (z) Object.keys(z.voices).forEach(k => fadeOut(z, k, 1.2)); }); S.cur = null; save(); refresh(); }
+  function stopAll() { Z.forEach(z => { if (z) Object.keys(z.voices).forEach(k => fadeOut(z, k, 1.2)); }); S.cur = null; save(); if (window.HL && HL.lights.length) HL.set('off'); refresh(); }
   async function hit(which) { if (!armed) await arm(); const zs = which === 'all' ? S.zones.map((_, i) => i) : [which]; for (const i of zs) { const z = zone(i), b = await buf(z, 'stinger'), s = z.ctx.createBufferSource(), g = z.ctx.createGain(); s.buffer = b; g.gain.value = 1; s.connect(g); g.connect(z.bus); s.start(); } }
   async function preview(i, id) { if (!armed) await arm(); const z = zone(i), k = 'prev:' + id; if (z.voices[k]) { fadeOut(z, k, .3); refresh(); return; } const b = await buf(z, id), s = z.ctx.createBufferSource(), g = z.ctx.createGain(); s.buffer = b; s.loop = true; g.gain.value = .7; s.connect(g); g.connect(z.bus); s.start(); const vo = z.voices[k] = { src: s, g }; s.onended = () => { if (z.voices[k] === vo) delete z.voices[k]; refresh(); }; setTimeout(() => { if (z.voices[k] === vo) { fadeOut(z, k, 1); refresh(); } }, 20000); refresh(); }
   async function testZone(i) {
@@ -103,6 +106,7 @@
       if (!S.scenes.find(s => s.id === editSc)) editSc = S.scenes[0] && S.scenes[0].id; const sc = S.scenes.find(s => s.id === editSc);
       if (!sc) return '<button data-newscene>New scene</button>';
       return `<h2>Edit scenes</h2><div class="row"><select id="scsel">${sceneOpts()}</select><input type="text" id="scname" value="${esc(sc.name)}" aria-label="Scene name"><button data-newscene>New</button><button data-dupscene>Duplicate</button><button data-delscene class="rec">Delete</button><button data-play="${sc.id}" class="big">Play this scene</button></div>
+      <div class="card"><div class="row"><b>Lights</b><select id="lmode">${HL.modes.map(m => `<option value="${m[0]}" ${lightOf(sc).mode === m[0] ? 'selected' : ''}>${m[1]}</option>`).join('')}</select><input type="color" id="lcol" value="${lightOf(sc).color}" aria-label="Light color"><span class="mu xs">${HL.lights.length ? HL.lights.length + ' light(s) connected' : 'no lights connected (Lights tab)'}</span></div></div>
       <p class="mu xs">Changes save at once. If this scene is playing, press Play again to hear changes (sounds that stay in the scene keep playing without a gap).</p>
       ${S.zones.map((z, i) => `<div class="card"><h3>Zone ${i + 1}: ${esc(z.name)}</h3>${sc.cues.map((c, k) => c.zone !== i ? '' : `<div class="row"><select data-csnd="${k}">${sndOpts(c.snd)}</select><input type="range" min="0" max="1" step=".01" value="${c.vol}" data-cvol="${k}" aria-label="Volume"><button data-cdel="${k}" class="rec" aria-label="Remove">x</button></div>`).join('')}<div class="row"><select id="add${i}">${sndOpts('')}</select><button data-cadd="${i}">+ Add sound</button></div></div>`).join('')}`;
     },
@@ -116,6 +120,14 @@
     sounds() {
       return `<h2>Sounds</h2><div class="card"><div class="row"><span>Listen on</span><select id="pz">${S.zones.map((z, i) => `<option value="${i}" ${sounds.pz == i ? 'selected' : ''}>Zone ${i + 1}: ${esc(z.name)}</option>`).join('')}</select><label class="big"><input type="file" id="up" accept="audio/*,video/mp4,video/webm" multiple> add your own files</label></div><p class="mu xs">Uploaded files stay on this computer (in the browser). Use only sounds you made, bought or that are free for public use. Good free sources: freesound.org (filter to CC0), pixabay.com/sound-effects, sonniss.com GDC free bundles, YouTube Audio Library. Check each license.</p></div>
       <table>${sndList().map(s => `<tr><td>${esc(s.name)}</td><td class="mu xs">${s.custom ? 'your file' : 'made by Hauntica'}${s.loop ? ', loops' : ''}</td><td><button data-prev="${esc(s.id)}" class="${Z[sounds.pz] && Z[sounds.pz].voices['prev:' + s.id] ? 'on' : ''}">${Z[sounds.pz] && Z[sounds.pz].voices['prev:' + s.id] ? 'Stop' : 'Listen'}</button>${s.custom ? `<button data-delsnd="${esc(s.id)}" class="rec">Delete</button>` : ''}</td></tr>`).join('')}</table>`;
+    },
+    lights() {
+      const hl = HL, ok = hl.supported();
+      return `<h2>Lights</h2>${ok ? '' : '<div class="card warn"><b>This browser cannot talk to Bluetooth lights.</b> Use Chrome or Edge on a computer (not Safari or iPhone), with Bluetooth turned on.</div>'}
+      <div class="card"><p>Close the Happy Lighting app on your phone first, or turn off the phone's Bluetooth, because these lights accept only one connection. Press Connect, pick the light in the list, then repeat for the second light. <b>Untested on real lights</b>: use the red, green and blue buttons to check each one.</p>
+      <div class="row"><button class="big" data-lconn ${ok ? '' : 'disabled'}>Connect a light</button><button data-lpow="1">All on</button><button data-lpow="0">All off</button></div></div>
+      ${hl.lights.map((li, i) => `<div class="card"><div class="row"><span class="dot ${li.chr ? 'live' : ''}"></span><b>${esc(li.name)}</b><span class="mu xs">${esc(li.fam.label)}</span><span class="grow"></span><button data-lrgb="${i}|255|0|0">Red</button><button data-lrgb="${i}|0|255|0">Green</button><button data-lrgb="${i}|0|0|255">Blue</button>${li.chr ? '' : `<button data-lre="${i}">Reconnect</button>`}<button data-lbye="${i}" class="rec">Remove</button></div><div class="row"><span class="mu xs">Brightness</span><input type="range" min=".05" max="1" step=".05" value="${li.bright}" data-lbr="${i}"></div></div>`).join('')}
+      <div class="card"><h3>Try an effect now</h3><div class="row"><select id="tmode">${hl.modes.map(m => `<option value="${m[0]}">${m[1]}</option>`).join('')}</select><input type="color" id="tcol" value="#ff2a00"><button data-ltry>Run</button><span class="mu xs">Each scene remembers its own light effect (Edit scenes tab).</span></div></div>`;
     },
     video() {
       return `<h2>Video windows</h2><div class="card"><p>Opens a YouTube video in its own window. Drag that window onto the other display (HDMI or DisplayLink) and press F11. Only use videos you may show: your own, public domain, or channels that upload films legitimately. The window's sound goes to this computer's <b>default</b> output (set that in Windows sound settings, or run the video on a second computer).</p>
@@ -151,6 +163,12 @@
     if (d.cdel) { sc.cues.splice(+d.cdel, 1); save(); render(); return; }
     if (d.prev) { preview(+sounds.pz, d.prev); return; }
     if (d.delsnd) { const id = d.delsnd.slice(2); await dbop('readwrite', s => s.delete(id)); await loadCustom(); S.scenes.forEach(s => { s.cues = s.cues.filter(c => c.snd !== d.delsnd); }); save(); render(); return; }
+    if (d.lconn != null) { try { await HL.connect(); toast('Light connected'); } catch (er) { toast(er.name === 'NotFoundError' ? 'No light chosen' : (er.message || er)); } render(); return; }
+    if (d.lpow != null) { HL.power(d.lpow === '1'); return; }
+    if (d.lrgb) { const [i, r, g, bb] = d.lrgb.split('|').map(Number); HL.setRGB(HL.lights[i], r, g, bb); return; }
+    if (d.lbye) { HL.disconnect(HL.lights[+d.lbye]); return; }
+    if (d.lre) { try { await HL.reconnect(HL.lights[+d.lre]); } catch (er) { toast('Could not reconnect'); } render(); return; }
+    if (d.ltry != null) { HL.set($('#tmode').value, $('#tcol').value); return; }
     if (d.vadd != null) { const m = ($('#vurl').value || '').match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/); if (!m) { toast('That does not look like a YouTube link'); return; } S.videos.push({ t: $('#vtitle').value || 'Video ' + m[1], v: m[1] }); save(); render(); return; }
     if (d.vdel) { S.videos.splice(+d.vdel, 1); save(); render(); return; }
     if (d.vopen || d.vloop) { const i = +(d.vopen || d.vloop), v = S.videos[i]; window.open('video.html?v=' + encodeURIComponent(v.v) + (d.vloop ? '&loop=1' : ''), 'hv' + i, 'width=960,height=540'); return; }
@@ -160,7 +178,9 @@
     if (t.id === 'fade') { S.fade = +t.value; $('#fadev').textContent = t.value + ' s'; save(); return; }
     if (d.zvol != null && d.zvol !== '') { S.zones[+d.zvol].vol = +t.value; save(); applyZone(+d.zvol); return; }
     if (d.cvol != null) { const sc = S.scenes.find(s => s.id === editSc); sc.cues[+d.cvol].vol = +t.value; save(); return; }
+    if (d.lbr != null) { HL.lights[+d.lbr].bright = +t.value; return; }
     if (d.zname != null) { S.zones[+d.zname].name = t.value; save(); return; }
+    if (t.id === 'lcol') { const sc = S.scenes.find(s => s.id === editSc); sc.light = { mode: lightOf(sc).mode, color: t.value }; save(); return; }
     if (t.id === 'scname') { S.scenes.find(s => s.id === editSc).name = t.value; save(); }
   });
   document.addEventListener('change', async e => {
@@ -168,6 +188,7 @@
     if (d.zdev != null) { S.zones[+d.zdev].dev = t.value; save(); applyZone(+d.zdev); testZone(+d.zdev); return; }
     if (d.zch != null) { S.zones[+d.zch].ch = t.value; save(); if (Z[+d.zch]) { Z[+d.zch].cfg = ''; applyZone(+d.zch); } return; }
     if (d.csnd != null) { const sc = S.scenes.find(s => s.id === editSc); sc.cues[+d.csnd].snd = t.value; save(); return; }
+    if (t.id === 'lmode') { const sc = S.scenes.find(s => s.id === editSc); sc.light = { mode: t.value, color: lightOf(sc).color }; save(); return; }
     if (t.id === 'scsel') { editSc = t.value; render(); return; }
     if (t.id === 'pz') { sounds.pz = +t.value; render(); return; }
     if (t.id === 'up') { for (const f of t.files) { const id = Date.now() + '' + Math.random().toString(36).slice(2, 6); await dbop('readwrite', s => s.put({ id, name: f.name.replace(/\.[^.]+$/, ''), blob: f })); } await loadCustom(); toast('Added ' + t.files.length + ' file(s)'); render(); }
@@ -177,5 +198,6 @@
   $('#fade').value = S.fade; $('#fadev').textContent = S.fade + ' s';
   window.HAUNT = { S, Z, playScene, stopAll, hit, arm, zone, buf, sndList };
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
+  HL.onchange = () => { if (tab === 'lights' || tab === 'edit') render(); };
   loadCustom().then(() => listDevices(false)).then(render);
 })();
