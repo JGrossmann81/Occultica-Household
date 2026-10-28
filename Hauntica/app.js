@@ -4,7 +4,13 @@
   const KEY = 'hauntica-v1';
   const ZN = ['Front porch', 'Hallway', 'Living room', 'Basement'];
   const cue = (zone, snd, vol) => ({ zone, snd, vol });
-  const DL = { s1: ['lightning', '#7a9bff'], s2: ['flicker', '#ff8a2a'], s3: ['pulse', '#ff1a1a'], s4: ['fire', '#ff5a00'], s5: ['breathe', '#2a5bff'], s6: ['breathe', '#7a00c8'] };
+  const MORE = () => [
+    { id: 's7', name: "Banshee's wail", cues: [cue(0, 'wind', .5), cue(0, 'banshee', .55), cue(1, 'banshee', .45), cue(1, 'whispers', .4), cue(2, 'choir', .5), cue(2, 'knock', .4), cue(3, 'demon', .5), cue(3, 'heart', .5)] },
+    { id: 's8', name: 'Werewolf woods', cues: [cue(0, 'howl', .7), cue(0, 'crickets', .4), cue(0, 'wind', .4), cue(1, 'steps', .5), cue(1, 'breath', .4), cue(2, 'howl', .4), cue(2, 'wind', .3), cue(3, 'demon', .4), cue(3, 'scratch', .5)] },
+    { id: 's9', name: "Witch's cauldron", cues: [cue(0, 'wind', .3), cue(0, 'cauldron', .6), cue(1, 'cauldron', .5), cue(1, 'flies', .3), cue(2, 'organ', .5), cue(2, 'cauldron', .4), cue(2, 'whispers', .35), cue(3, 'flies', .5), cue(3, 'drips', .4), cue(3, 'chains', .3)] },
+    { id: 's10', name: 'Possessed house', cues: [cue(0, 'knock', .6), cue(0, 'scratch', .3), cue(0, 'drone', .4), cue(1, 'clock', .5), cue(1, 'whispers', .5), cue(1, 'choir', .35), cue(2, 'demon', .5), cue(2, 'scrape', .8), cue(2, 'scratch', .4), cue(3, 'heart', .7), cue(3, 'breath', .5), cue(3, 'organ', .3)] }
+  ];
+  const DL = { s7: ['flicker', '#7ab0ff'], s8: ['breathe', '#fff3b0'], s9: ['flicker', '#33ff44'], s10: ['pulse', '#ff0000'], s1: ['lightning', '#7a9bff'], s2: ['flicker', '#ff8a2a'], s3: ['pulse', '#ff1a1a'], s4: ['fire', '#ff5a00'], s5: ['breathe', '#2a5bff'], s6: ['breathe', '#7a00c8'] };
   const lightOf = sc => sc.light || (DL[sc.id] ? { mode: DL[sc.id][0], color: DL[sc.id][1] } : { mode: 'off', color: '#ff2a00' });
   const DEF = () => ({
     fade: 2, cur: null,
@@ -20,6 +26,7 @@
     videos: [{ t: 'Example: paste a public-domain horror film link below', v: '' }]
   });
   let S; try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { } if (!S || !S.zones) S = DEF();
+  if (!S.ver || S.ver < 2) { MORE().forEach(m => { if (!S.scenes.some(x => x.id === m.id)) S.scenes.push(m); }); S.ver = 2; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } };
   let tab = 'scenes', editSc = null, devs = [], custom = [], armed = false;
   const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2800); };
@@ -75,7 +82,7 @@
     await Promise.all(sc.cues.filter(c => S.zones[c.zone]).map(c => startCue(c.zone, c, S.fade))); refresh();
   }
   function stopAll() { Z.forEach(z => { if (z) Object.keys(z.voices).forEach(k => fadeOut(z, k, 1.2)); }); S.cur = null; save(); if (window.HL && HL.lights.length) HL.set('off'); refresh(); }
-  async function hit(which) { if (!armed) await arm(); const zs = which === 'all' ? S.zones.map((_, i) => i) : [which]; for (const i of zs) { const z = zone(i), b = await buf(z, 'stinger'), s = z.ctx.createBufferSource(), g = z.ctx.createGain(); s.buffer = b; g.gain.value = 1; s.connect(g); g.connect(z.bus); s.start(); } }
+  async function hit(which, snd) { snd = snd || 'stinger'; if (!armed) await arm(); const zs = which === 'all' ? S.zones.map((_, i) => i) : [which]; for (const i of zs) { const z = zone(i), b = await buf(z, snd), s = z.ctx.createBufferSource(), g = z.ctx.createGain(); s.buffer = b; g.gain.value = 1; s.connect(g); g.connect(z.bus); s.start(); } }
   async function preview(i, id) { if (!armed) await arm(); const z = zone(i), k = 'prev:' + id; if (z.voices[k]) { fadeOut(z, k, .3); refresh(); return; } const b = await buf(z, id), s = z.ctx.createBufferSource(), g = z.ctx.createGain(); s.buffer = b; s.loop = true; g.gain.value = .7; s.connect(g); g.connect(z.bus); s.start(); const vo = z.voices[k] = { src: s, g }; s.onended = () => { if (z.voices[k] === vo) delete z.voices[k]; refresh(); }; setTimeout(() => { if (z.voices[k] === vo) { fadeOut(z, k, 1); refresh(); } }, 20000); refresh(); }
   async function testZone(i) {
     if (!armed) await arm(); const z = zone(i); applyZone(i); const t0 = z.ctx.currentTime + .1;
@@ -99,7 +106,7 @@
       ${armed ? '' : '<div class="card warn">Press <b>1. Arm audio</b> once after opening the page (browsers block sound until you do). Then press a scene.</div>'}
       <h2>Scenes <span class="mu xs">(number keys 1 to ${Math.min(9, S.scenes.length)} start a scene, Esc stops everything)</span></h2>
       <div class="grid">${S.scenes.map((s, i) => `<button class="scene ${S.cur === s.id ? 'on' : ''}" data-play="${s.id}">${esc(s.name)}<kbd>${i < 9 ? i + 1 : ''}</kbd><small>${esc([...new Set(s.cues.map(c => c.zone))].length)} zones, ${s.cues.length} sounds</small></button>`).join('')}</div>
-      <h2 style="margin-top:18px">Jump scare</h2><div class="row">${S.zones.map((z, i) => `<button data-hit="${i}">Zone ${i + 1}: ${esc(z.name)}</button>`).join('')}<button data-hit="all" class="rec">ALL zones</button></div>
+      <h2 style="margin-top:18px">Jump scare</h2><div class="row">${S.zones.map((z, i) => `<button data-hit="${i}">Zone ${i + 1}: ${esc(z.name)}</button>`).join('')}<button data-hit="all" class="rec">ALL zones</button></div><div class="row"><button data-hit="all|slam">Door slam, all zones</button><button data-hit="all|riser">Riser (8 s)</button><button data-hit="build" class="rec">Riser then BIG HIT</button></div>
       <h2 style="margin-top:18px">Zones now</h2>${S.zones.map((z, i) => `<div class="card"><div class="row"><span class="dot ${live(i).length ? 'live' : ''}"></span><b>Zone ${i + 1}: ${esc(z.name)}</b><span class="mu xs">${z.ch === 'both' ? 'stereo' : z.ch === 'L' ? 'mono, left channel' : 'mono, right channel'}</span><span class="grow"></span><input type="range" min="0" max="1" step=".01" value="${z.vol}" data-zvol="${i}" aria-label="Zone ${i + 1} volume"><button data-zmute="${i}" class="${z.mute ? 'on' : ''}">${z.mute ? 'Muted' : 'Mute'}</button></div><div>${live(i).map(k => `<span class="tag">${esc(sndName(k))}</span>`).join('') || '<span class="mu xs">silent</span>'}</div></div>`).join('')}`;
     },
     edit() {
@@ -152,7 +159,7 @@
     if (b.id === 'arm') { await arm(); toast('Audio armed'); render(); return; }
     if (b.id === 'stopall') { stopAll(); return; }
     if (d.play) { playScene(d.play); return; }
-    if (d.hit) { hit(d.hit === 'all' ? 'all' : +d.hit); return; }
+    if (d.hit) { if (d.hit === 'build') { hit('all', 'riser'); setTimeout(() => hit('all'), 8000); toast('Building... hit in 8 seconds'); return; } const [w, sn] = d.hit.split('|'); hit(w === 'all' ? 'all' : +w, sn); return; }
     if (d.zmute) { const c = S.zones[+d.zmute]; c.mute = !c.mute; save(); applyZone(+d.zmute); render(); return; }
     if (d.devs) { listDevices(true); return; }
     if (d.ztest) { testZone(+d.ztest); return; }
