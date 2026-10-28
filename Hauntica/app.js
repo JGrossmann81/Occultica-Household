@@ -2,7 +2,7 @@
 (function () {
   const $ = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const KEY = 'hauntica-v1';
-  const ZN = ['Front porch', 'Hallway', 'Living room', 'Basement'];
+  const ZN = ['Front porch', 'Hallway', 'Living room', 'Basement'], ZN3 = ['Cave entrance', 'Mossy green', 'Main backyard', 'Living room'];
   const cue = (zone, snd, vol) => ({ zone, snd, vol });
   const MORE = () => [
     { id: 's7', name: "Banshee's wail", cues: [cue(0, 'wind', .5), cue(0, 'banshee', .55), cue(1, 'banshee', .45), cue(1, 'whispers', .4), cue(2, 'choir', .5), cue(2, 'knock', .4), cue(3, 'demon', .5), cue(3, 'heart', .5)] },
@@ -14,7 +14,7 @@
   const lightOf = sc => sc.light || (DL[sc.id] ? { mode: DL[sc.id][0], color: DL[sc.id][1] } : { mode: 'off', color: '#ff2a00' });
   const DEF = () => ({
     fade: 2, cur: null,
-    zones: ZN.map((n, i) => ({ name: n, dev: 'default', ch: i === 0 ? 'L' : i === 1 ? 'R' : 'both', vol: .85, mute: false })),
+    zones: ZN.map((n, i) => ({ name: n, dev: 'default', ch: i % 2 ? 'R' : 'L', vol: .85, mute: false })),
     scenes: [
       { id: 's1', name: 'Stormy arrival', cues: [cue(0, 'rain', .8), cue(0, 'wind', .5), cue(0, 'thunder', .8), cue(1, 'drone', .4), cue(1, 'wind', .25), cue(2, 'drone', .35), cue(3, 'drone', .3), cue(3, 'drips', .4)] },
       { id: 's2', name: 'Haunted hall', cues: [cue(0, 'wind', .4), cue(0, 'crickets', .3), cue(1, 'creak', .8), cue(1, 'whispers', .6), cue(1, 'drone', .4), cue(2, 'musicbox', .5), cue(2, 'bell', .4), cue(3, 'breath', .5), cue(3, 'drips', .5)] },
@@ -25,8 +25,12 @@
     ],
     videos: [{ t: 'Example: paste a public-domain horror film link below', v: '' }]
   });
+  /* version 3: the party layout. old zone 0 (outdoor ambience) -> Main backyard (quieter, movies play there), 1 -> Mossy green, 2 -> Living room, 3 (dark and close) -> Cave entrance */
+  const REMAP = { 0: 2, 1: 1, 2: 3, 3: 0 };
+  function toLayout3(st) { st.scenes.forEach(sc => { sc.cues = sc.cues.map(c => ({ ...c, zone: REMAP[c.zone] != null ? REMAP[c.zone] : c.zone, vol: c.zone === 0 ? Math.round(c.vol * 60) / 100 : c.vol })); }); st.zones.forEach((z, i) => { if (ZN[i] === z.name || !z.name) z.name = ZN3[i] || z.name; if (z.ch === 'both') z.ch = i % 2 ? 'R' : 'L'; }); st.ver = 3; return st; }
   let S; try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { } if (!S || !S.zones) S = DEF();
-  if (!S.ver || S.ver < 2) { MORE().forEach(m => { if (!S.scenes.some(x => x.id === m.id)) S.scenes.push(m); }); S.ver = 2; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+  if (!S.ver || S.ver < 2) { MORE().forEach(m => { if (!S.scenes.some(x => x.id === m.id)) S.scenes.push(m); }); S.ver = 2; }
+  if (S.ver < 3) { const def = S.zones.length === 4 && S.zones.every((z, i) => z.name === ZN[i]); if (def) toLayout3(S); else S.ver = 3; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } };
   let tab = 'scenes', editSc = null, devs = [], custom = [], armed = false;
   const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2800); };
