@@ -6,6 +6,6 @@ self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Pr
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url); if (u.origin !== location.origin) return;
   const rel = u.pathname.replace(new URL(self.registration.scope).pathname, '');
-  if (/^(Healthica|Hortica|Saturnica|Chorica|Backpackica|Campica|Roadtripica|Birthica|Recordica|Synths|Hauntica)\//i.test(rel)) return; // the apps handle their own files
+  if (/^(Healthica|Hortica|Saturnica|Chorica|Backpackica|Campica|Roadtripica|Birthica|Recordica|Synths|Hauntica|3DPrintida)\//i.test(rel)) return; // the apps handle their own files
   e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match('index.html'))));
 });

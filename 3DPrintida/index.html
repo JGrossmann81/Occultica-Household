@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3DPrintida</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0b1218"><link rel="icon" href="icon-192.png"><link rel="stylesheet" href="style.css"></head><body>
+<header><div class="brand"><span class="logo">&#9881;</span><b>3DPRINTIDA</b><small>photos, text and measurements to print-ready files</small></div><div class="tp"><label class="chk">Printer <select id="printer"></select></label></div></header>
+<nav id="modes"></nav>
+<main><section id="left"><div id="ctl" class="card"></div></section>
+<section id="right"><div class="card"><canvas id="gl"></canvas><p id="glwarn" class="warn" style="display:none">This browser cannot show the 3D preview, but the files still download.</p><p class="xs mu">Drag to turn the part. Scroll to zoom. The red outline is your printer's bed.</p>
+<div id="stats"></div><div class="row" id="dl"><button data-dl="3mf" class="big ok">Download 3MF</button><button data-dl="stl" class="big">Download STL</button><button data-demo>Try a demo shape</button></div>
+<p class="xs mu">Then open ElegooSlicer and drag the file onto the plate, or use File &gt; Import. The part is already flat on the bed and centred. Units are millimetres.</p></div></section></main>
+<script src="mesh.js"></script><script src="app.js"></script></body></html>
