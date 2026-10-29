@@ -1,6 +1,6 @@
 /* 3DPrintida service worker: network first so updates show; the saved copy is used offline. */
-const CACHE = 'printida-2';
-const FILES = ['./', 'index.html', 'style.css', 'mesh.js', 'occ.js', 'lib/three.min.js', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
+const CACHE = 'printida-3';
+const FILES = ['./', 'index.html', 'style.css', 'mesh.js', 'occ.js', 'model.js', 'lib/three.min.js', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith("printida") && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
