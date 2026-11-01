@@ -36,6 +36,12 @@ occ_plugin(additica Additica Addt)
 occ_plugin(grainica Grainica Grnc)
 occ_plugin(fantica  Fantica  Fntc)
 occ_plugin(voxica   Voxica   Voxc)
+occ_plugin(pianica  Pianica  Pnca)
+occ_plugin(reedica  Reedica  Rdca)
+occ_plugin(brassica Brassica Brsc)
+occ_plugin(clavica  Clavica  Clvc)
+occ_plugin(stringica Stringica Strn)
+occ_plugin(pipica   Pipica   Pipc)
 
 # Test tool: renders each editor to PNG and plays notes through every processor (used by the build).
 juce_add_console_app(snapshot PRODUCT_NAME "snapshot")

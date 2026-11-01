@@ -105,12 +105,75 @@ inline void drawVoxica(Graphics& g, Rectangle<float> r, const occ::Theme& th, fl
   Path mouth; mouth.addEllipse(cx - w * 0.5f, cy - open * 0.5f - 8, w, open); g.setColour(C(0xff1a0612)); g.fillPath(mouth); g.setColour(C(th.accent)); g.strokePath(mouth, juce::PathStrokeType(2.4f));
   g.setColour(C(th.accent).withAlpha(0.35f)); for (int k = 1; k <= 3; ++k) { float rr = w * 0.5f + k * 16.f + std::fmod(t * 14.f, 16.f); g.drawEllipse(cx - rr, cy - 8 - rr * 0.45f, rr * 2, rr * 0.9f, 1.f); }
 }
+inline void drawPianica(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
+  g.setGradientFill(juce::ColourGradient(C(0xff3a2c22), r.getCentreX(), r.getBottom(), C(0xff0b0807), r.getCentreX(), r.getY(), false)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
+  g.setColour(C(th.accent).withAlpha(0.3f)); g.drawRoundedRectangle(r.reduced(2, 2), 8.f, 1.2f);
+  // strings fanning over a soundboard, hammers striking, ivory keys along the bottom
+  int N = 36; float top = r.getY() + 12, bot = r.getBottom() - 34;
+  for (int i = 0; i < N; ++i) { float u = i / (N - 1.f), x0 = r.getX() + 20 + (r.getWidth() - 40) * u, x1 = r.getX() + 14 + (r.getWidth() - 28) * u, wob = std::sin(t * (9.f + i * 0.4f) + i) * level * 5.f * (0.4f + 0.6f * std::sin(u * 3.14f));
+    g.setColour(C(th.glow).withAlpha(0.35f + 0.4f * level)); Path p; p.startNewSubPath(x0, top); p.quadraticTo(x0 + wob, (top + bot) * 0.5f, x1, bot); g.strokePath(p, juce::PathStrokeType(i < 12 ? 1.8f : (i < 24 ? 1.2f : 0.8f))); }
+  for (int i = 0; i < 6; ++i) { float k = std::fmod(t * 1.5f + i * 0.37f, 1.f), x = r.getX() + 40 + i * (r.getWidth() - 80) / 5.f, y = bot - 6 - 22 * std::abs(std::sin(k * 3.14f)); g.setColour(C(0xffe9dcc0)); g.fillRoundedRectangle(x - 4, y, 8, 12, 3.f); }
+  float kw = (r.getWidth() - 28) / 28.f; for (int i = 0; i < 28; ++i) { g.setColour(C(0xfff4ecd8)); g.fillRect(r.getX() + 14 + i * kw, r.getBottom() - 26, kw - 1, 20.f); }
+  for (int i : {1, 2, 4, 5, 6, 8, 9, 11, 12, 13, 15, 16, 18, 19, 20, 22, 23, 25, 26}) { g.setColour(C(0xff111111)); g.fillRect(r.getX() + 14 + i * kw - kw * 0.3f, r.getBottom() - 26, kw * 0.6f, 12.f); }
+}
+inline void drawReedica(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
+  g.setGradientFill(juce::ColourGradient(C(0xff3d2a16), r.getCentreX(), r.getBottom(), C(0xff0e0803), r.getCentreX(), r.getY(), false)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
+  g.setColour(C(th.accent).withAlpha(0.3f)); g.drawRoundedRectangle(r.reduced(2, 2), 8.f, 1.2f);
+  // a wooden pipe on a slant with finger holes; breath ripples leave the bell
+  Path pipe; float x0 = r.getX() + 24, y0 = r.getBottom() - 30, x1 = r.getRight() - 70, y1 = r.getY() + 26; pipe.startNewSubPath(x0, y0); pipe.lineTo(x1, y1);
+  g.setColour(C(0xff1a0f06)); g.strokePath(pipe, juce::PathStrokeType(16.f)); g.setColour(C(0xff7a4a22)); g.strokePath(pipe, juce::PathStrokeType(12.f)); g.setColour(C(th.accent).withAlpha(0.5f)); g.strokePath(pipe, juce::PathStrokeType(3.f));
+  for (int i = 0; i < 6; ++i) { float u = 0.25f + i * 0.11f, x = x0 + (x1 - x0) * u, y = y0 + (y1 - y0) * u; g.setColour(C(0xff0a0603)); g.fillEllipse(x - 3.5f, y - 3.5f, 7, 7); g.setColour(C(th.glow).withAlpha(0.15f + level * 1.5f * (0.5f + 0.5f * std::sin(t * 3.f + i)))); g.fillEllipse(x - 7, y - 7, 14, 14); }
+  g.setColour(C(0xff7a4a22)); g.fillEllipse(x1 - 9, y1 - 9, 18, 18); g.setColour(C(th.accent)); g.drawEllipse(x1 - 9, y1 - 9, 18, 18, 1.5f);
+  for (int k = 0; k < 4; ++k) { float rr = 14.f + std::fmod(t * 20.f + k * 14.f, 56.f); g.setColour(C(th.glow).withAlpha(0.5f * (1.f - (rr - 14.f) / 56.f))); g.drawEllipse(x1 - rr, y1 - rr, rr * 2, rr * 2, 1.2f); }
+}
+inline void drawBrassica(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
+  g.setGradientFill(juce::ColourGradient(C(0xff44300f), r.getCentreX(), r.getBottom(), C(0xff0d0802), r.getCentreX(), r.getY(), false)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
+  g.setColour(C(th.accent).withAlpha(0.3f)); g.drawRoundedRectangle(r.reduced(2, 2), 8.f, 1.2f);
+  // coiled brass tube ending in a flared bell on the right, glowing with the level
+  float cy = r.getCentreY(), bx = r.getRight() - 60; Path tube; tube.startNewSubPath(r.getX() + 24, cy - 14); tube.lineTo(r.getX() + 110, cy - 14); tube.quadraticTo(r.getX() + 150, cy - 14, r.getX() + 150, cy + 4); tube.quadraticTo(r.getX() + 150, cy + 24, r.getX() + 110, cy + 24); tube.lineTo(r.getX() + 90, cy + 24); tube.quadraticTo(r.getX() + 60, cy + 24, r.getX() + 60, cy + 4); tube.quadraticTo(r.getX() + 60, cy - 6, r.getX() + 90, cy - 6); tube.lineTo(bx - 40, cy - 6);
+  g.setColour(C(0xff2a1a04)); g.strokePath(tube, juce::PathStrokeType(11.f)); g.setColour(C(th.accent)); g.strokePath(tube, juce::PathStrokeType(7.f)); g.setColour(C(0xfffff0b0).withAlpha(0.55f)); g.strokePath(tube, juce::PathStrokeType(1.8f));
+  Path bell; bell.startNewSubPath(bx - 40, cy - 8); bell.quadraticTo(bx - 8, cy - 10, bx + 16, cy - 40 - level * 20); bell.lineTo(bx + 16, cy + 40 + level * 20); bell.quadraticTo(bx - 8, cy + 10, bx - 40, cy + 2); bell.closeSubPath();
+  g.setColour(C(th.accent).darker(0.3f)); g.fillPath(bell); g.setColour(C(th.glow)); g.strokePath(bell, juce::PathStrokeType(1.6f));
+  for (int k = 0; k < 4; ++k) { float rr = 10.f + std::fmod(t * 30.f + k * 18.f, 72.f); g.setColour(C(th.glow).withAlpha(juce::jlimit(0.f, 1.f, (0.3f + level * 3.f) * (1.f - (rr - 10.f) / 72.f)))); g.drawEllipse(bx + 16 - rr * 0.5f, cy - rr, rr, rr * 2, 1.4f); }
+}
+inline void drawClavica(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
+  g.setGradientFill(juce::ColourGradient(C(0xff3d1c1f), r.getCentreX(), r.getBottom(), C(0xff0d0505), r.getCentreX(), r.getY(), false)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
+  g.setColour(C(th.accent).withAlpha(0.3f)); g.drawRoundedRectangle(r.reduced(2, 2), 8.f, 1.2f);
+  // vintage keyboard along the bottom; above it a vibrating tine, a plucked string and a tape reel
+  float kw = (r.getWidth() - 28) / 24.f; for (int i = 0; i < 24; ++i) { g.setColour(C(0xfff1e3d0)); g.fillRect(r.getX() + 14 + i * kw, r.getBottom() - 24, kw - 1, 18.f); }
+  for (int i : {1, 3, 5, 8, 10, 13, 15, 17, 20, 22}) { g.setColour(C(0xff1a0c0c)); g.fillRect(r.getX() + 14 + i * kw + kw * 0.6f, r.getBottom() - 24, kw * 0.6f, 11.f); }
+  float w3 = r.getWidth() / 3.f, cy = r.getCentreY() - 12;
+  { float x = r.getX() + w3 * 0.5f, wob = std::sin(t * 30.f) * (2.f + level * 22.f); Path p; p.startNewSubPath(x - 30, cy + 20); p.lineTo(x + wob, cy - 24); g.setColour(C(0xffd9d9e0)); g.strokePath(p, juce::PathStrokeType(3.f)); g.setColour(C(th.accent)); g.drawEllipse(x - 12, cy - 6, 24, 20, 2.f); }
+  { float x0 = r.getX() + w3 * 1.15f, x1 = r.getX() + w3 * 1.85f, wob = std::sin(t * 22.f) * (1.f + level * 16.f); Path p; p.startNewSubPath(x0, cy + 10); p.quadraticTo((x0 + x1) * 0.5f, cy + 10 + wob, x1, cy + 10); g.setColour(C(th.glow)); g.strokePath(p, juce::PathStrokeType(1.8f)); g.setColour(C(0xff2a1a1a)); g.fillRect(x0 - 3, cy, 6.f, 22.f); g.fillRect(x1 - 3, cy, 6.f, 22.f); }
+  { float x = r.getX() + w3 * 2.5f; for (int s = -1; s <= 1; s += 2) { float cx = x + s * 22; g.setColour(C(0xff1a0c0c)); g.fillEllipse(cx - 16, cy - 8, 32, 32); g.setColour(C(th.accent)); g.drawEllipse(cx - 16, cy - 8, 32, 32, 1.6f); float a = t * 2.f * s; for (int k = 0; k < 3; ++k) { float ang = a + k * 2.094f; g.drawLine(cx, cy + 8, cx + std::cos(ang) * 12, cy + 8 + std::sin(ang) * 12, 1.5f); } } }
+}
+inline void drawStringica(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
+  g.setGradientFill(juce::ColourGradient(C(0xff4a2a14), r.getCentreX(), r.getBottom(), C(0xff0e0705), r.getCentreX(), r.getY(), false)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
+  g.setColour(C(th.accent).withAlpha(0.3f)); g.drawRoundedRectangle(r.reduced(2, 2), 8.f, 1.2f);
+  // a bowed string: bridge on the left, nut on the right, the bow dragging a Helmholtz kink back and forth
+  float yb = r.getCentreY(), x0 = r.getX() + 30, x1 = r.getRight() - 30; g.setColour(C(0xff2a1608)); g.fillRect(x0 - 8, yb - 26, 8.f, 52.f); g.fillRect(x1, yb - 26, 8.f, 52.f);
+  for (int k = 0; k < 3; ++k) { Path p; float yy = yb + (k - 1) * 11.f; p.startNewSubPath(x0, yy); p.lineTo(x1, yy); g.setColour(C(th.accent).withAlpha(0.25f)); g.strokePath(p, juce::PathStrokeType(1.f)); }
+  float u = std::fmod(t * 1.1f, 1.f), kx = x0 + (x1 - x0) * (0.5f + 0.4f * std::sin(t * 6.f)), amp = 3.f + level * 40.f; Path s; s.startNewSubPath(x0, yb); s.lineTo(kx, yb - amp * (u < 0.5f ? 1 : -1)); s.lineTo(x1, yb);
+  g.setColour(C(th.glow).withAlpha(0.2f)); g.strokePath(s, juce::PathStrokeType(8.f)); g.setColour(C(th.glow)); g.strokePath(s, juce::PathStrokeType(2.f));
+  float bx = x0 + (x1 - x0) * 0.62f; g.setColour(C(0xffe9dcc0)); g.drawLine(bx - 24, yb + 30, bx + 24, yb - 30, 3.f); g.setColour(C(0xfff7f2e6).withAlpha(0.7f)); g.drawLine(bx - 24, yb + 30, bx + 24, yb - 30, 1.f);
+  for (int k = 0; k < 3; ++k) { float rr = 10.f + std::fmod(t * 18.f + k * 14.f, 42.f); g.setColour(C(th.accent).withAlpha(0.4f * (1.f - (rr - 10.f) / 42.f))); g.drawEllipse(r.getX() + 60 - rr, r.getBottom() - 30 - rr * 0.6f, rr * 2, rr * 1.2f, 1.f); }
+}
+inline void drawPipica(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
+  g.setGradientFill(juce::ColourGradient(C(0xff3d2616), r.getCentreX(), r.getBottom(), C(0xff0b0605), r.getCentreX(), r.getY(), false)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
+  g.setColour(C(th.accent).withAlpha(0.3f)); g.drawRoundedRectangle(r.reduced(2, 2), 8.f, 1.2f);
+  // organ facade: gilded pipes in a rising/falling arch of heights, glowing from the mouths
+  int N = 21; float pw = (r.getWidth() - 40) / N, base = r.getBottom() - 12;
+  for (int i = 0; i < N; ++i) { float u = (i - (N - 1) * 0.5f) / ((N - 1) * 0.5f), h = (r.getHeight() - 26) * (0.35f + 0.65f * (1.f - u * u * 0.8f)) * (0.97f + 0.03f * std::sin(t * 3.f + i)); auto b = Rectangle<float>(r.getX() + 20 + i * pw + 1.5f, base - h, pw - 3.f, h);
+    g.setGradientFill(juce::ColourGradient(C(th.glow), b.getX(), 0.f, C(th.accent).darker(0.5f), b.getRight(), 0.f, false)); g.fillRect(b);
+    g.setColour(C(0xff120a06)); g.fillEllipse(b.getX() + 1.5f, b.getBottom() - b.getWidth() * 1.6f, b.getWidth() - 3.f, b.getWidth() * 0.8f);
+    g.setColour(C(th.glow).withAlpha(0.1f + level * 1.5f * (0.5f + 0.5f * std::sin(t * 2.f + i * 0.6f)))); g.fillRect(b.getX() - 1, b.getBottom() - b.getWidth() * 2.2f, b.getWidth() + 2, b.getWidth() * 1.4f); }
+}
 inline void drawGeneric(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
   g.setColour(C(0xff000000).withAlpha(0.35f)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
   for (int k = 0; k < 3; ++k) { Path p; for (int i = 0; i <= 200; ++i) { float x = r.getX() + 10 + (r.getWidth() - 20) * i / 200.f, y = r.getCentreY() + std::sin(i * 0.12f * (k + 1) + t * (2 + k)) * r.getHeight() * 0.28f * (0.3f + level * 2.f) / (k + 1); if (i == 0) p.startNewSubPath(x, y); else p.lineTo(x, y); }
     g.setColour(C(th.accent).withAlpha(0.7f / (k + 1))); g.strokePath(p, juce::PathStrokeType(1.6f)); }
 }
 inline void drawMotif(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
-  if (th.motif == "minica") drawMinica(g, r, th, level, t); else if (th.motif == "rhodica") drawRhodica(g, r, th, level, t); else if (th.motif == "wraithica") drawWraithica(g, r, th, level, t); else if (th.motif == "additica") drawAdditica(g, r, th, level, t); else if (th.motif == "grainica") drawGrainica(g, r, th, level, t); else if (th.motif == "fantica") drawFantica(g, r, th, level, t); else if (th.motif == "voxica") drawVoxica(g, r, th, level, t); else drawGeneric(g, r, th, level, t);
+  if (th.motif == "minica") drawMinica(g, r, th, level, t); else if (th.motif == "rhodica") drawRhodica(g, r, th, level, t); else if (th.motif == "wraithica") drawWraithica(g, r, th, level, t); else if (th.motif == "additica") drawAdditica(g, r, th, level, t); else if (th.motif == "grainica") drawGrainica(g, r, th, level, t); else if (th.motif == "fantica") drawFantica(g, r, th, level, t); else if (th.motif == "voxica") drawVoxica(g, r, th, level, t); else if (th.motif == "pianica") drawPianica(g, r, th, level, t); else if (th.motif == "reedica") drawReedica(g, r, th, level, t); else if (th.motif == "brassica") drawBrassica(g, r, th, level, t); else if (th.motif == "clavica") drawClavica(g, r, th, level, t); else if (th.motif == "stringica") drawStringica(g, r, th, level, t); else if (th.motif == "pipica") drawPipica(g, r, th, level, t); else drawGeneric(g, r, th, level, t);
 }
 }  // namespace occart
