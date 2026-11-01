@@ -177,7 +177,7 @@
     if (cur.id !== 'photo3d') return;
     try { const c = new AbortController(), to = setTimeout(() => c.abort(), 1500), r = await fetch(HELPER + '/ping', { signal: c.signal }); clearTimeout(to); const j = await r.json(); src.helper = j;
       const bar = $('#p3bar i'); if (bar) bar.style.width = (j.state === 'busy' ? j.pct : 0) + '%';
-      if (j.state === 'ready') { if (!src.busy) p3msg(src.done || 'Helper is ready on ' + j.device + (j.vram ? ' (' + j.vram + ' GB)' : '') + '.', 'ok'); } else if (j.state === 'busy' || src.busy) p3msg(j.msg, 'mu'); else p3msg(j.msg, j.state === 'error' ? 'bad' : 'mu');
+      if (j.vram >= 14 && !src.q16) { src.q16 = 1; P.quality = 'max'; if (cur.id === 'photo3d') renderControls(); } if (j.state === 'ready') { if (!src.busy) p3msg(src.done || 'Helper is ready on ' + j.device + (j.vram ? ' (' + j.vram + ' GB)' : '') + '.', 'ok'); } else if (j.state === 'busy' || src.busy) p3msg(j.msg, 'mu'); else p3msg(j.msg, j.state === 'error' ? 'bad' : 'mu');
     } catch (e) { src.helper = null; if (!src.busy) p3msg('The helper is not running on this PC. Start it with start.bat, then wait a moment.', 'bad'); }
   }
   setInterval(ping, 1000);
@@ -196,6 +196,31 @@
   document.addEventListener('click', e => { if (e.target.dataset && e.target.dataset.p3) makePhoto(); });
   document.addEventListener('dragover', e => { e.preventDefault(); });
   document.addEventListener('drop', e => { e.preventDefault(); const fs = [...(e.dataTransfer ? e.dataTransfer.files : [])]; if (!fs.length) return; if (/\.(stl|obj|glb|gltf)$/i.test(fs[0].name)) { loadModelFile(fs[0]); return; } const im = fs.filter(f => /^image\//.test(f.type)); if (!im.length) return; if (cur.id !== 'photo3d') setGen('photo3d'); const ks = ['front', 'back', 'left', 'right']; im.slice(0, 4).forEach((f, i) => { if (src.views[ks[i]]) URL.revokeObjectURL(src.views[ks[i]].url); src.views[ks[i]] = { file: f, url: URL.createObjectURL(f) }; }); if (im.length > 1) P.engine = 'hy2mv'; renderControls(); ping(); });
+  /* ---------- printer connection ---------- */
+  const lsGet = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }, lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { } };
+  function renderPrinter(res, note) {
+    const ip = lsGet('3dp-ip');
+    $('#prbox').innerHTML = `<p class="mu xs">ElegooSlicer asking you for the printer's IP address by hand means its automatic search is not getting through. This finds the printer a different way and shows the address to paste in. It needs the photo helper (or find-printer.bat from the same download) running on this PC, because a web page cannot search your network.</p>
+<div class="row"><button class="big ok" data-pr="find">Find my printer</button>${ip ? `<button data-pr="check">Check saved address ${esc(ip)}</button>` : ''}</div>
+<div id="prres">${res || ''}</div><p class="xs ${note && note.cls || 'mu'}" id="prnote">${esc(note && note.text || '')}</p>
+<details class="xs mu"><summary>Why does ElegooSlicer keep losing the printer?</summary><ol><li><b>The address changes.</b> Your router hands the printer a new address now and then. In the router's settings, find the DHCP or LAN page and reserve one address for the printer (a "static lease" or "address reservation"). Then it never changes and you only enter it once.</li><li><b>Windows firewall.</b> When Windows asks whether ElegooSlicer may use the network, allow Private networks. Also set your network to "Private" in Windows Settings > Network.</li><li><b>Extra network cards.</b> VPNs, VirtualBox, Hyper-V, Docker and some audio or virtual-device software add fake network cards that swallow the search. Disable them while connecting.</li><li><b>Different networks.</b> The PC on a wired port and the printer on Wi-Fi are usually fine, but a guest Wi-Fi or a mesh "AP isolation" setting blocks them from seeing each other.</li></ol></details>`;
+  }
+  async function printerFind() {
+    renderPrinter('<p class="xs mu">Looking... this takes up to 15 seconds.</p>');
+    try { const r = await fetch(HELPER + '/printer/find'), j = await r.json(); const list = j.printers || [];
+      if (!list.length) { renderPrinter('', { cls: 'bad', text: 'No printer found. ' + (j.notes || []).join(' ') }); return; }
+      if (list.length === 1) lsSet('3dp-ip', list[0].ip);
+      renderPrinter(list.map(p => `<div class="found"><b>${esc(p.name || 'Elegoo printer')}</b> <span class="mu xs">${esc(p.model || '')} ${esc(p.firmware || '')}</span><div class="ip">${esc(p.ip)}</div><button data-pr="copy" data-ip="${esc(p.ip)}">Copy address</button> <button data-pr="save" data-ip="${esc(p.ip)}">Remember it</button></div>`).join('') + '<p class="xs mu">In ElegooSlicer: open the Device tab, add or edit the printer, and paste this address into the IP box.</p>');
+    } catch (e) { renderPrinter('', { cls: 'bad', text: 'The helper is not running on this PC. Download photo3d.zip (link under Photo to 3D), unzip it, and double-click find-printer.bat. It prints the address and copies it for you.' }); }
+  }
+  document.addEventListener('click', async e => {
+    const d = e.target.dataset; if (!d || !d.pr) return;
+    if (d.pr === 'find') printerFind();
+    else if (d.pr === 'copy') { try { await navigator.clipboard.writeText(d.ip); e.target.textContent = 'Copied'; } catch (er) { e.target.textContent = d.ip; } }
+    else if (d.pr === 'save') { lsSet('3dp-ip', d.ip); e.target.textContent = 'Saved'; }
+    else if (d.pr === 'check') { const ip = lsGet('3dp-ip'); try { const j = await (await fetch(HELPER + '/printer/check?ip=' + encodeURIComponent(ip))).json(); renderPrinter('', j.reachable ? { cls: 'ok', text: ip + ' answers' + (j.info && j.info.name ? ': ' + j.info.name : '') + '. It is the right address.' } : { cls: 'bad', text: ip + ' does not answer. The printer may be off or have a new address: press Find my printer.' }); } catch (er) { renderPrinter('', { cls: 'bad', text: 'The helper is not running, so I cannot check.' }); } }
+  });
+  renderPrinter();
   function loadDemo() { const c = document.createElement('canvas'); c.width = 300; c.height = 300; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 300, 300); x.fillStyle = '#000'; x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 60 : 130; x.lineTo(150 + r * Math.cos(a), 160 + r * Math.sin(a)); } x.closePath(); x.fill(); const im = new Image(); im.onload = () => { src.img = im; if (cur.inputs.includes('source')) P.mode = 'image'; renderControls(); regen(); }; im.src = c.toDataURL(); }
   $('#printer').innerHTML = PRINTERS.map(p => `<option value="${p.id}" ${p.id === printer.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   window.P3 = { GEN, setGen, get tris() { return tris; }, get P() { return P; }, src, loadDemo, G };
