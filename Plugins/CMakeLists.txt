@@ -48,6 +48,7 @@ occ_plugin(avoidica Avoidica Avdc)
 occ_plugin(industrica Industrica Indc)
 occ_plugin(physica Physica Phyc)
 occ_plugin(galactica Galactica Glct)
+occ_plugin(modica Modica Mdca)
 
 # Test tool: renders each editor to PNG and plays notes through every processor (used by the build).
 juce_add_console_app(snapshot PRODUCT_NAME "snapshot")
