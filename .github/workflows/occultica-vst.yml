@@ -35,6 +35,22 @@ jobs:
         run: cmake -S Plugins -B build -A x64
       - name: Build
         run: cmake --build build --config Release --parallel 4
+      - name: Smoke test and editor snapshots
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem build -Recurse -Filter snapshot.exe | Select-Object -First 1
+          & $exe.FullName snapshots
+          if ($LASTEXITCODE -ne 0) { Write-Host "snapshot tool reported a problem"; exit 1 }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: editor-snapshots, path: snapshots }
+      - name: Plugin validation (pluginval)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pv.zip
+          Expand-Archive pv.zip pv
+          Get-ChildItem build -Recurse -Directory -Filter *.vst3 | ForEach-Object { Write-Host "== $($_.Name)"; & pv/pluginval.exe --strictness-level 5 --validate-in-process --skip-gui-tests $_.FullName; if ($LASTEXITCODE -ne 0) { Write-Host "pluginval failed for $($_.Name)" } }
       - name: Collect
         shell: pwsh
         run: |

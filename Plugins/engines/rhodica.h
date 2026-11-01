@@ -12,7 +12,7 @@ inline std::vector<Spec> makeSpecs() {
   };
 }
 inline std::vector<Group> makeGroups() { return {{"Tine", {Tone, Bark, Ping, Decay, Damper, VelSens, Spread}}, {"Amp", {TremMode, TremRate, TremDepth, Chorus_, Drive, BendRange, Volume}}}; }
-struct Voice { double tune = 0, gain = 1, ph = 0, ph2 = 0, amp = 0, vel = 1, tA = 0, tI = 0, pan = 0, last = 0; int note = 60; bool gate = false; long age = 0; };
+struct Voice { double tune = 0, gain = 1, ph = 0, ph2 = 0, amp = 0, vel = 1, tA = 0, tI = 0, pan = 0, last = 0; int note = 60; bool gate = false; long long age = 0; };
 struct Engine : EngineBase {
   Voice voice[20]; Chorus chorus; Lfo lfo; DcBlock dcL, dcR; double bend = 0, mod = 0;
   explicit Engine(double sr) : EngineBase(sr), chorus(sr) { initParams(makeSpecs()); }
@@ -21,7 +21,7 @@ struct Engine : EngineBase {
   void allNotesOff() override { for (auto& vo : voice) vo.gate = false; }
   void noteOn(int note, double vel) override {
     int pick = -1; for (int i = 0; i < 20; ++i) if (voice[i].amp < 1e-4 && !voice[i].gate) { pick = i; break; }
-    if (pick < 0) { long old = 1L << 60; for (int i = 0; i < 20; ++i) if (voice[i].age < old) { old = voice[i].age; pick = i; } }
+    if (pick < 0) { long long old = 1LL << 60; for (int i = 0; i < 20; ++i) if (voice[i].age < old) { old = voice[i].age; pick = i; } }
     voice[pick] = Voice(); Voice& vo = voice[pick]; vo.note = note; vo.tune = noteTune * 0.01; vo.gate = true; vo.age = ++counter;
     double sens = v[VelSens]; vo.vel = 1 - sens + sens * vel; vo.gain = std::pow(std::max(0.05, vo.vel), 1.3); vo.tI = 0; vo.tA = 0; vo.amp = 1e-3;
     vo.pan = clampd((note - 60) / 36.0, -1, 1) * v[Spread] * 0.5;

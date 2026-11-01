@@ -33,7 +33,7 @@ inline std::vector<Group> makeGroups() {
           {"Play", {Mode, Trigger, Glide, Velocity, BendRange, Volume}},
           {"Modulation", {LfoRate, LfoShape, VibDepth, FiltMod}}};
 }
-struct Voice { Osc o[3]; Ladder lad; Adsr fe, ae; Noise noise; double cur = 60, target = 60, vel = 1; int note = -1; bool gate = false; long age = 0; };
+struct Voice { Osc o[3]; Ladder lad; Adsr fe, ae; Noise noise; double cur = 60, target = 60, vel = 1; int note = -1; bool gate = false; long long age = 0; };
 struct Held { int note; double vel; };
 inline double wave(Osc& o, int w, double dt) {
   double s;
@@ -59,7 +59,7 @@ struct Engine : EngineBase {
       vo.gate = true; vo.note = note; return;
     }
     int pick = -1; for (int i = 0; i < nv; ++i) if (!voice[i].ae.active()) { pick = i; break; }
-    if (pick < 0) { long oldest = 1L << 60; for (int i = 0; i < nv; ++i) if (voice[i].age < oldest) { oldest = voice[i].age; pick = i; } }
+    if (pick < 0) { long long oldest = 1LL << 60; for (int i = 0; i < nv; ++i) if (voice[i].age < oldest) { oldest = voice[i].age; pick = i; } }
     Voice& vo = voice[pick]; vo.note = note; vo.cur = vo.target = note + nt; vo.vel = vel; vo.gate = true; vo.age = ++counter;
     vo.fe.gateOn(true); vo.ae.gateOn(true);
   }

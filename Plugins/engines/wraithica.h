@@ -25,7 +25,7 @@ inline std::vector<Spec> makeSpecs() {
 inline std::vector<Group> makeGroups() { return {{"Instrument", {Preset, Model, Tone, Breath, Haunt, Level}}, {"Bow & hand", {Attack, Release, Glide, Bend}}, {"Motion", {VibRate, VibDepth, Motion}}}; }
 
 struct SinTab { double t[4098]; SinTab() { for (int i = 0; i <= 4097; ++i) t[i] = std::sin(2 * kPi * i / 4096.0); } };
-inline double sinCyc(double ph) { static const SinTab st; double x = ph * 4096; long i = (long)std::floor(x); double f = x - double(i); i &= 4095; return st.t[i] + (st.t[i + 1] - st.t[i]) * f; }
+inline double sinCyc(double ph) { static const SinTab st; double x = ph * 4096; long long i = (long long)std::floor(x); double f = x - double(i); i &= 4095; return st.t[i] + (st.t[i + 1] - st.t[i]) * f; }
 inline double rnd01(Noise& n) { return 0.5 + 0.5 * n.white(); }
 static const double VIB[4] = {90, 70, 18, 14}, MGAIN[4] = {0.55, 0.50, 0.60, 0.32}, GR[4] = {1, 2.32, 4.25, 6.63}, WR[8] = {1, 1.52, 2.17, 2.83, 3.61, 4.76, 5.93, 7.31}, GB[4] = {1, 0.40, 0.18, 0.08};
 constexpr int kPoly = 8, kMono = 8, kSlots = 9, kStack = 16;
@@ -36,8 +36,8 @@ inline double waterWeight(int k, double tone) { return std::exp(-k * (1.25 - 1.0
 
 struct Voice {
   double ph[16], amp[16], beat[8], sk[8], skD[8], shPh[8], shRate[8], ratioJit[8]; Adsr env; Noise noise; Svf nsv;
-  bool active, gate, killing, hasPend; int model, key, chan; long age; int pModel, pChan, pKey; double pVel, pTune, kg, f, vel, pitch, tgt, dev, scoop, volS, volT, t; long cnt;
-  double vibPh, vibFade, wander, wanderT; long wCnt; double slPh1, slPh2, slR1, slR2, slRw, slRwT; long slCnt; int K; double rubPh, rubRate, pan;
+  bool active, gate, killing, hasPend; int model, key, chan; long long age; int pModel, pChan, pKey; double pVel, pTune, kg, f, vel, pitch, tgt, dev, scoop, volS, volT, t; long long cnt;
+  double vibPh, vibFade, wander, wanderT; long long wCnt; double slPh1, slPh2, slR1, slR2, slRw, slRwT; long long slCnt; int K; double rubPh, rubRate, pan;
   Voice() { reset(); }
   void reset() {
     active = gate = killing = hasPend = false; model = 0; key = 60; chan = 0; age = 0; pModel = 0; pChan = 0; pKey = 60; pVel = 0; pTune = 0; kg = 1;
@@ -49,12 +49,12 @@ struct Voice {
 };
 struct Sm { double v = 0, c = 0; double next(double t) { v = t + (v - t) * c; return v; } };
 struct Bloom {
-  double sr; std::vector<DelayLine> dl; long cl[2][4]; long al[2][2]; std::vector<DelayLine> cd[2]; std::vector<DelayLine> ad[2]; double cz[2][4], cfb[2][4]; double ph1 = 0, ph2 = 0, wetMag = 0, rt = -1, lpz[2], oL = 0, oR = 0, w[2];
+  double sr; std::vector<DelayLine> dl; long long cl[2][4]; long long al[2][2]; std::vector<DelayLine> cd[2]; std::vector<DelayLine> ad[2]; double cz[2][4], cfb[2][4]; double ph1 = 0, ph2 = 0, wetMag = 0, rt = -1, lpz[2], oL = 0, oR = 0, w[2];
   explicit Bloom(double s) : sr(s) {
     double k = s / 44100.0; static const double cb[2][4] = {{1116, 1188, 1277, 1356}, {1139, 1211, 1300, 1379}}, ab[2][2] = {{556, 441}, {579, 464}};
-    dl.emplace_back((long)std::floor(s * 0.06) + 16); dl.emplace_back((long)std::floor(s * 0.06) + 16);
-    for (int c = 0; c < 2; ++c) { for (int j = 0; j < 4; ++j) { cl[c][j] = std::max(8L, (long)std::llround(cb[c][j] * k * 1.6)); cd[c].emplace_back(cl[c][j] + 16); cz[c][j] = 0; cfb[c][j] = 0; }
-      for (int j = 0; j < 2; ++j) { al[c][j] = std::max(8L, (long)std::llround(ab[c][j] * k)); ad[c].emplace_back(al[c][j] + 32); } lpz[c] = 0; w[c] = 0; }
+    dl.emplace_back((long long)std::floor(s * 0.06) + 16); dl.emplace_back((long long)std::floor(s * 0.06) + 16);
+    for (int c = 0; c < 2; ++c) { for (int j = 0; j < 4; ++j) { cl[c][j] = std::max(8LL, (long long)std::llround(cb[c][j] * k * 1.6)); cd[c].emplace_back(cl[c][j] + 16); cz[c][j] = 0; cfb[c][j] = 0; }
+      for (int j = 0; j < 2; ++j) { al[c][j] = std::max(8LL, (long long)std::llround(ab[c][j] * k)); ad[c].emplace_back(al[c][j] + 32); } lpz[c] = 0; w[c] = 0; }
     clear();
   }
   void clear() { for (int c = 0; c < 2; ++c) { dl[c].clear(); for (int j = 0; j < 4; ++j) { cd[c][j].clear(); cz[c][j] = 0; } for (int j = 0; j < 2; ++j) ad[c][j].clear(); lpz[c] = 0; } wetMag = 0; ph1 = ph2 = 0; }
@@ -82,7 +82,7 @@ struct Bloom {
 };
 struct Engine : EngineBase {
   std::vector<Spec> specs; Voice vs[kSlots]; std::vector<std::tuple<int, int, double, double>> stack;   // chan, note, vel, tune
-  long ageCtr = 0; double lastPitch = -1, bendIn = 0, mod = 0, press = 0, exprIn = 1; long idle = 0; bool cleared = true; Bloom fx;
+  long long ageCtr = 0; double lastPitch = -1, bendIn = 0, mod = 0, press = 0, exprIn = 1; long long idle = 0; bool cleared = true; Bloom fx;
   Sm tone, breath, motion, haunt, level, vib, bend, pressS, expr; struct G { double tone = 0, breath = 0, motion = 0, haunt = 0, vibD = 0, bend = 0, press = 0, expr = 1; } g; double mixL = 0, mixR = 0;
   double gc = 0, volC = 0, scoopC = 0, killStep = 0, wanderC = 0;
   explicit Engine(double sr) : EngineBase(sr), specs(makeSpecs()), fx(sr) {
@@ -105,7 +105,7 @@ struct Engine : EngineBase {
   }
   void pitchBend(double b) override { bendIn = clampd(b, -1, 1); } void modWheel(double m) override { mod = clampd(m, 0, 1); } void pressure(double p) override { press = clampd(p, 0, 1); }
   void allNotesOff() override { stack.clear(); for (auto& vo : vs) if (vo.active) { vo.gate = false; vo.env.gateOff(); } }
-  bool removeFromStack(int ch, int note) { for (size_t i = 0; i < stack.size(); ++i) if (std::get<0>(stack[i]) == ch && std::get<1>(stack[i]) == note) { stack.erase(stack.begin() + (long)i); return true; } return false; }
+  bool removeFromStack(int ch, int note) { for (size_t i = 0; i < stack.size(); ++i) if (std::get<0>(stack[i]) == ch && std::get<1>(stack[i]) == note) { stack.erase(stack.begin() + (long long)i); return true; } return false; }
   void retarget(Voice& vo, double t) { vo.dev += vo.tgt - t; vo.tgt = t; }
   void noteOn(int note, double vel) override {
     vel = clampd(vel, 0, 1); double tune = noteTune * 0.01; noteTune = 0; int ch = 0, model = (int)std::floor(v[Model] + 0.5);
@@ -117,7 +117,7 @@ struct Engine : EngineBase {
     } else {
       int pick = -1; for (int i = 0; i < kPoly; ++i) if (!vs[i].active) { pick = i; break; }
       if (pick < 0) { double best = 1e9; for (int i = 0; i < kPoly; ++i) if (!vs[i].gate && !vs[i].killing && vs[i].env.v < best) { best = vs[i].env.v; pick = i; } }
-      if (pick < 0) { long oldest = 1L << 60; for (int i = 0; i < kPoly; ++i) if (!vs[i].killing && vs[i].age < oldest) { oldest = vs[i].age; pick = i; } }
+      if (pick < 0) { long long oldest = 1LL << 60; for (int i = 0; i < kPoly; ++i) if (!vs[i].killing && vs[i].age < oldest) { oldest = vs[i].age; pick = i; } }
       if (pick < 0) pick = 0;
       Voice& vo = vs[pick];
       if (vo.active) { vo.killing = true; vo.hasPend = true; vo.pModel = model; vo.pChan = ch; vo.pKey = note; vo.pVel = vel; vo.pTune = tune; }
@@ -139,7 +139,7 @@ struct Engine : EngineBase {
     }
   }
   void startVoice(Voice& vo, int model, int ch, int key, double vel, double tune) {
-    bool mono = model <= 1; double lastP = lastPitch; long age = ++ageCtr; bool wasActive = vo.active && vo.model == model && mono;
+    bool mono = model <= 1; double lastP = lastPitch; long long age = ++ageCtr; bool wasActive = vo.active && vo.model == model && mono;
     if (!wasActive) vo.reset();
     vo.active = true; vo.gate = true; vo.killing = false; vo.hasPend = false; vo.kg = 1; vo.model = model; vo.key = key; vo.chan = ch; vo.age = age; vo.vel = vel; vo.volT = velVol(vel);
     vo.tgt = key + tune; vo.t = 0; vo.cnt = 0;
@@ -189,13 +189,13 @@ struct Engine : EngineBase {
     double lfo = sinCyc(vo.vibPh);
     if (vo.gate && vo.t > 0.12) vo.vibFade = std::min(1.0, vo.vibFade + isr / 0.45);
     int model = vo.model; double vibS = lfo * g.vibD * vo.vibFade * VIB[model] * 0.01;
-    if (--vo.wCnt <= 0) { vo.wCnt = (long)std::floor((0.4 + 0.8 * rnd01(vo.noise)) * sr); vo.wanderT = vo.noise.white(); }
+    if (--vo.wCnt <= 0) { vo.wCnt = (long long)std::floor((0.4 + 0.8 * rnd01(vo.noise)) * sr); vo.wanderT = vo.noise.white(); }
     vo.wander += (vo.wanderT - vo.wander) * wanderC;
     double wanderCents = model <= 1 ? 14 * g.motion + 6 * g.haunt : 3 * g.motion + 4 * g.haunt;
     double semis = vo.pitch + g.bend + vo.scoop + vibS + vo.wander * wanderCents * 0.01, slosh = 0;
     if (model == 3) {
       vo.slPh1 += vo.slR1 * isr; vo.slPh2 += vo.slR2 * isr; if (vo.slPh1 >= 1) vo.slPh1 -= 1; if (vo.slPh2 >= 1) vo.slPh2 -= 1;
-      if (--vo.slCnt <= 0) { vo.slCnt = (long)std::floor((0.5 + 1.5 * rnd01(vo.noise)) * sr); vo.slRwT = vo.noise.white(); }
+      if (--vo.slCnt <= 0) { vo.slCnt = (long long)std::floor((0.5 + 1.5 * rnd01(vo.noise)) * sr); vo.slRwT = vo.noise.white(); }
       vo.slRw += (vo.slRwT - vo.slRw) * (wanderC * 1.5);
       slosh = g.motion * (34 * sinCyc(vo.slPh1) + 14 * sinCyc(vo.slPh2) + 26 * vo.slRw);
     }

@@ -32,3 +32,9 @@ endfunction()
 occ_plugin(minica   Minica   Mnca)
 occ_plugin(rhodica  Rhodica  Rhdc)
 occ_plugin(wraithica Wraithica Wrth)
+
+# Test tool: renders each editor to PNG and plays notes through every processor (used by the build).
+juce_add_console_app(snapshot PRODUCT_NAME "snapshot")
+target_sources(snapshot PRIVATE tests/Snapshot.cpp)
+target_compile_definitions(snapshot PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_USE_WINDOWS_MEDIA_FORMAT=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+target_link_libraries(snapshot PRIVATE juce::juce_audio_utils juce::juce_dsp juce::juce_recommended_config_flags)

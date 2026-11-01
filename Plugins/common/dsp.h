@@ -73,10 +73,10 @@ struct Lfo {
   }
 };
 struct Chorus {
-  double sr; std::vector<float> l, r; int mask; long w = 0; double ph = 0;
+  double sr; std::vector<float> l, r; int mask; long long w = 0; double ph = 0;
   explicit Chorus(double sr_ = 48000) : sr(sr_) { int n = 1; while (n < int(std::floor(sr * 0.06)) + 8) n <<= 1; l.assign(n, 0.f); r.assign(n, 0.f); mask = n - 1; }
   void reset() { std::fill(l.begin(), l.end(), 0.f); std::fill(r.begin(), r.end(), 0.f); }
-  double rd(const std::vector<float>& b, double d) const { double p = double(w) - d; long i0 = (long)std::floor(p); double f = p - double(i0); double a = b[i0 & mask], c = b[(i0 + 1) & mask]; return a + (c - a) * f; }
+  double rd(const std::vector<float>& b, double d) const { double p = double(w) - d; long long i0 = (long long)std::floor(p); double f = p - double(i0); double a = b[i0 & mask], c = b[(i0 + 1) & mask]; return a + (c - a) * f; }
   void process(double& L, double& R, double rateHz, double depth, double mix) {
     ph += rateHz / sr; if (ph >= 1) ph -= 1;
     double base = sr * 0.012, dep = sr * 0.006 * depth, m1 = std::sin(PI2 * ph), m2 = std::sin(PI2 * (ph + 0.5));
@@ -86,13 +86,13 @@ struct Chorus {
   }
 };
 struct DelayLine {
-  std::vector<float> buf; long mask, w = 0;
-  explicit DelayLine(long maxFrames = 16) { long n = 1; while (n < maxFrames + 4) n <<= 1; buf.assign((size_t)n, 0.f); mask = n - 1; }
+  std::vector<float> buf; long long mask, w = 0;
+  explicit DelayLine(long long maxFrames = 16) { long long n = 1; while (n < maxFrames + 4) n <<= 1; buf.assign((size_t)n, 0.f); mask = n - 1; }
   void clear() { std::fill(buf.begin(), buf.end(), 0.f); }
   void push(double x) { buf[(size_t)(w & mask)] = (float)x; ++w; }
-  double tap(long d) const { return buf[(size_t)((w - 1 - d) & mask)]; }
+  double tap(long long d) const { return buf[(size_t)((w - 1 - d) & mask)]; }
   double read(double d) const {
-    d = std::min(std::max(d, 2.0), double(mask - 3)); long i = (long)std::floor(d); double t = d - double(i);
+    d = std::min(std::max(d, 2.0), double(mask - 3)); long long i = (long long)std::floor(d); double t = d - double(i);
     double y0 = tap(i - 2), y1 = tap(i - 1), y2 = tap(i), y3 = tap(i + 1);
     double c0 = y1, c1 = 0.5 * (y2 - y0), c2 = y0 - 2.5 * y1 + 2 * y2 - 0.5 * y3, c3 = 0.5 * (y3 - y0) + 1.5 * (y1 - y2);
     return ((c3 * t + c2) * t + c1) * t + c0;
