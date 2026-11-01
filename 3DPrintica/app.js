@@ -113,7 +113,7 @@
     clearTimeout(timer); timer = setTimeout(() => {
       const t = [], p = Object.assign({}, P); let err = null; try { err = cur.build(p, t); } catch (e) { err = 'Could not build this shape: ' + e.message; }
       lastErr = err || ''; if (err || !t.length) { tris = null; show(); preview.set(null); return; }
-      tris = G.center(Float32Array.from(t)); if (cur.flip) { /* relief: stand it up is the slicer's job; keep flat */ } preview.set(tris); show();
+      ED.hist = []; ED.note = ''; tris = G.center(Float32Array.from(t)); if (cur.flip) { /* relief: stand it up is the slicer's job; keep flat */ } preview.set(tris); show(); edRender();
     }, 90);
   }
   function show() {
@@ -130,7 +130,7 @@
     const cv = $('#gl'); let gl = cv.getContext('webgl', { antialias: true }); const st = { az: -1.35, el: .8, dist: 220, tr: null, n: 0 };
     if (!gl) { $('#glwarn').style.display = ''; return { set() { }, draw() { } }; }
     const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); return o; }, mk = (v, f) => { const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, v)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, f)); gl.linkProgram(p); return p; };
-    const prog = mk('attribute vec3 p;attribute vec3 n;uniform mat4 m;varying vec3 vn;void main(){vn=n;gl_Position=m*vec4(p,1.0);}', 'precision mediump float;varying vec3 vn;void main(){vec3 n=normalize(vn);float l=.25+.55*max(dot(n,normalize(vec3(.4,-.5,.8))),0.)+.3*max(dot(n,normalize(vec3(-.6,.4,.3))),0.);gl_FragColor=vec4(vec3(1.0,.55,.2)*l,1.0);}');
+    const prog = mk('attribute vec3 p;attribute vec3 n;attribute float f;uniform mat4 m;varying vec3 vn;varying float vf;void main(){vn=n;vf=f;gl_Position=m*vec4(p,1.0);}', 'precision mediump float;varying vec3 vn;varying float vf;void main(){vec3 n=normalize(vn);float l=.25+.55*max(dot(n,normalize(vec3(.4,-.5,.8))),0.)+.3*max(dot(n,normalize(vec3(-.6,.4,.3))),0.);vec3 base=vf>1.5?vec3(.2,.5,1.0):(vf>.5?vec3(1.0,.1,.1):vec3(1.0,.55,.2));gl_FragColor=vec4(base*l,1.0);}');
     const lp = mk('attribute vec3 p;uniform mat4 m;void main(){gl_Position=m*vec4(p,1.0);}', 'precision mediump float;uniform vec4 c;void main(){gl_FragColor=c;}');
     const vb = gl.createBuffer(), bb = gl.createBuffer();
     const mul = (a, b) => { const o = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + j] * b[i * 4 + k]; o[i * 4 + j] = s; } return o; };
@@ -138,17 +138,51 @@
       const V = new Float32Array([s[0], u[0], -f[0], 0, s[1], u[1], -f[1], 0, s[2], u[2], -f[2], 0, -(s[0] * eye[0] + s[1] * eye[1] + s[2] * eye[2]), -(u[0] * eye[0] + u[1] * eye[1] + u[2] * eye[2]), f[0] * eye[0] + f[1] * eye[1] + f[2] * eye[2], 1]), fv = 1 / Math.tan(.4), n = 1, fa = 4000, Pm = new Float32Array([fv / asp, 0, 0, 0, 0, fv, 0, 0, 0, 0, (fa + n) / (n - fa), -1, 0, 0, 2 * fa * n / (n - fa), 0]); return mul(Pm, V); }
     st.cz = 20;
     const api = {
-      set(tr) { st.tr = tr; if (tr) { const n = new Float32Array(tr.length), s = G.stats(tr); for (let i = 0; i < tr.length; i += 9) { const ux = tr[i + 3] - tr[i], uy = tr[i + 4] - tr[i + 1], uz = tr[i + 5] - tr[i + 2], vx = tr[i + 6] - tr[i], vy = tr[i + 7] - tr[i + 1], vz = tr[i + 8] - tr[i + 2]; let a = uy * vz - uz * vy, b = uz * vx - ux * vz, c = ux * vy - uy * vx; const l = Math.hypot(a, b, c) || 1; for (let k = 0; k < 3; k++) { n[i + k * 3] = a / l; n[i + k * 3 + 1] = b / l; n[i + k * 3 + 2] = c / l; } } st.nrm = n; st.n = tr.length / 3; gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, tr, gl.STATIC_DRAW); st.nb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, st.nb); gl.bufferData(gl.ARRAY_BUFFER, n, gl.STATIC_DRAW); st.cz = s.size[2] / 2; st.dist = Math.max(80, Math.hypot(...s.size) * 1.8); } api.draw(); },
+      set(tr, fl) { st.tr = tr; if (tr) { const n = new Float32Array(tr.length), s = G.stats(tr); for (let i = 0; i < tr.length; i += 9) { const ux = tr[i + 3] - tr[i], uy = tr[i + 4] - tr[i + 1], uz = tr[i + 5] - tr[i + 2], vx = tr[i + 6] - tr[i], vy = tr[i + 7] - tr[i + 1], vz = tr[i + 8] - tr[i + 2]; let a = uy * vz - uz * vy, b = uz * vx - ux * vz, c = ux * vy - uy * vx; const l = Math.hypot(a, b, c) || 1; for (let k = 0; k < 3; k++) { n[i + k * 3] = a / l; n[i + k * 3 + 1] = b / l; n[i + k * 3 + 2] = c / l; } } st.nrm = n; st.n = tr.length / 3; gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, tr, gl.STATIC_DRAW); st.nb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, st.nb); gl.bufferData(gl.ARRAY_BUFFER, n, gl.STATIC_DRAW); const fv = new Float32Array(tr.length / 3); if (fl) for (let q = 0; q < fl.length; q++) fv[q * 3] = fv[q * 3 + 1] = fv[q * 3 + 2] = fl[q]; st.fb = st.fb || gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, st.fb); gl.bufferData(gl.ARRAY_BUFFER, fv, gl.STATIC_DRAW); st.cz = s.size[2] / 2; st.dist = Math.max(80, Math.hypot(...s.size) * 1.8); } api.draw(); },
       draw() {
         const w = cv.clientWidth, h = cv.clientHeight; if (cv.width !== w * 2 || cv.height !== h * 2) { cv.width = w * 2; cv.height = h * 2; } gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(.05, .02, .03, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); gl.enable(gl.DEPTH_TEST);
         const M = mat(cv.width / cv.height), bed = printer.bed, bx = bed[0] / 2, by = bed[1] / 2, ln = new Float32Array([-bx, -by, 0, bx, -by, 0, bx, -by, 0, bx, by, 0, bx, by, 0, -bx, by, 0, -bx, by, 0, -bx, -by, 0]);
         gl.useProgram(lp); gl.uniformMatrix4fv(gl.getUniformLocation(lp, 'm'), false, M); gl.uniform4f(gl.getUniformLocation(lp, 'c'), .6, .3, .25, 1); gl.bindBuffer(gl.ARRAY_BUFFER, bb); gl.bufferData(gl.ARRAY_BUFFER, ln, gl.DYNAMIC_DRAW); let a = gl.getAttribLocation(lp, 'p'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 3, gl.FLOAT, false, 0, 0); gl.drawArrays(gl.LINES, 0, 8);
-        if (!st.tr) return; gl.useProgram(prog); gl.uniformMatrix4fv(gl.getUniformLocation(prog, 'm'), false, M); gl.bindBuffer(gl.ARRAY_BUFFER, vb); a = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 3, gl.FLOAT, false, 0, 0); gl.bindBuffer(gl.ARRAY_BUFFER, st.nb); const b = gl.getAttribLocation(prog, 'n'); gl.enableVertexAttribArray(b); gl.vertexAttribPointer(b, 3, gl.FLOAT, false, 0, 0); gl.drawArrays(gl.TRIANGLES, 0, st.n);
+        if (!st.tr) return; gl.useProgram(prog); gl.uniformMatrix4fv(gl.getUniformLocation(prog, 'm'), false, M); gl.bindBuffer(gl.ARRAY_BUFFER, vb); a = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 3, gl.FLOAT, false, 0, 0); gl.bindBuffer(gl.ARRAY_BUFFER, st.nb); const b = gl.getAttribLocation(prog, 'n'); gl.enableVertexAttribArray(b); gl.vertexAttribPointer(b, 3, gl.FLOAT, false, 0, 0); gl.bindBuffer(gl.ARRAY_BUFFER, st.fb); const fa2 = gl.getAttribLocation(prog, 'f'); gl.enableVertexAttribArray(fa2); gl.vertexAttribPointer(fa2, 1, gl.FLOAT, false, 0, 0); gl.drawArrays(gl.TRIANGLES, 0, st.n);
       }
     };
     let drag = null; cv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointerup', () => { drag = null; }); cv.addEventListener('pointermove', e => { if (!drag) return; st.az -= (e.clientX - drag[0]) * .01; st.el = Math.max(-.2, Math.min(1.5, st.el + (e.clientY - drag[1]) * .01)); drag = [e.clientX, e.clientY]; api.draw(); }); cv.addEventListener('wheel', e => { e.preventDefault(); st.dist = Math.max(30, Math.min(1500, st.dist * (e.deltaY > 0 ? 1.1 : .9))); api.draw(); }, { passive: false });
     window.addEventListener('resize', () => api.draw()); window.__gl = st; return api;
   })();
+
+  /* ---------- edit tools ---------- */
+  const ED = { hist: [], note: '' };
+  function edSet(t, note) { if (!tris) return; ED.hist.push(tris); if (ED.hist.length > 12) ED.hist.shift(); tris = G.center(t); ED.note = note || ''; preview.set(tris); show(); edRender(); }
+  function edFlags(kind, fl, msg) { preview.set(tris, fl); ED.note = msg; edRender(); }
+  function edRender() {
+    const b = $('#edbox'); if (!b) return; const E = window.E3;
+    if (!tris) { b.innerHTML = '<p class="mu xs">Make or open a part first.</p>'; return; }
+    b.innerHTML = `<div class="row"><b class="xs">Move and turn</b></div><div class="row wrap"><button data-ed="mx">Mirror left/right</button><button data-ed="my">Mirror front/back</button><button data-ed="mz">Flip upside down</button><button data-ed="rx">Turn 90 X</button><button data-ed="ry">Turn 90 Y</button><button data-ed="rz">Turn 90 Z</button><button data-ed="orient">Auto-orient for printing</button></div>
+<div class="row"><label class="lb">Scale %</label><input type="number" id="edsc" value="100" min="1" max="1000" style="width:80px"><button data-ed="scale">Apply</button></div>
+<div class="row"><b class="xs">Cut</b></div><div class="row"><select id="edax"><option value="2">Across (height)</option><option value="0">Left/right</option><option value="1">Front/back</option></select><input type="range" id="edpos" min="5" max="95" value="50" style="flex:1"><span id="edposv" class="xs">50%</span><button data-ed="cut">Cut here</button></div>
+<div class="row"><button data-ed="split">Split to fit the bed</button><button data-ed="arrange">Arrange pieces on the plate</button></div>
+<div class="row"><b class="xs">Hollow</b></div><div class="row"><label class="lb">Wall mm</label><input type="number" id="edw" value="2" min="0.8" max="10" step="0.2" style="width:70px"><span class="xs mu">sealed inside. For resin, cut the part in two first, hollow each half.</span><button data-ed="hollow">Hollow it</button></div>
+<div class="row"><b class="xs">Checks</b></div><div class="row wrap"><button data-ed="chkov">Show overhangs (red)</button><button data-ed="chkthin">Find thin walls (blue)</button><button data-ed="chkoff">Clear colours</button></div>
+<div class="row"><button data-ed="undo" ${ED.hist.length ? '' : 'disabled'}>Undo</button></div><p class="xs ${ED.warn ? 'bad' : 'mu'}" id="ednote">${esc(ED.note)}</p>`;
+    const pos = $('#edpos'); pos.oninput = () => { $('#edposv').textContent = pos.value + '%'; };
+  }
+  document.addEventListener('click', e => {
+    const bt = e.target.closest('[data-ed]'); if (!bt || !tris) return; const E = window.E3, k = bt.dataset.ed, bed = printer.bed; ED.warn = false;
+    try {
+      if (k === 'undo') { if (ED.hist.length) { tris = ED.hist.pop(); preview.set(tris); ED.note = 'Undone.'; show(); edRender(); } return; }
+      if (k === 'mx') edSet(E.mirror(tris, 0), 'Mirrored.'); else if (k === 'my') edSet(E.mirror(tris, 1), 'Mirrored.'); else if (k === 'mz') edSet(E.mirror(tris, 2), 'Flipped.');
+      else if (k === 'rx') edSet(E.rotate(tris, 0, 90), 'Turned.'); else if (k === 'ry') edSet(E.rotate(tris, 1, 90), 'Turned.'); else if (k === 'rz') edSet(E.rotate(tris, 2, 90), 'Turned.');
+      else if (k === 'orient') { const o = E.autoOrient(tris); edSet(o.tris, `Lay it on its best face. Overhang area ${Math.round(o.info.overhang)} mm², flat contact ${Math.round(o.info.contact)} mm².`); }
+      else if (k === 'scale') { const f = (+$('#edsc').value || 100) / 100; edSet(E.scale(tris, f), 'Scaled to ' + Math.round(f * 100) + '%.'); }
+      else if (k === 'cut') { const ax = +$('#edax').value, b = E.bounds(tris), d = b.mn[ax] + b.size[ax] * (+$('#edpos').value / 100), r = E.cut(tris, ax, d), pc = [r.low, r.high], off = E.arrange(pc, [1e5, 1e5], 8); const mv = pc.map((p, i) => i === 0 ? E.ground(p) : E.ground(p)); const w0 = E.bounds(mv[0]).size[0]; const all = Array.from(mv[0]).concat(Array.from(E.translate(mv[1], w0 / 2 + E.bounds(mv[1]).size[0] / 2 + 8, 0, 0))); edSet(Float32Array.from(all), 'Cut into two closed pieces and set side by side. Cut faces are flat so each piece can lie on the bed.'); }
+      else if (k === 'split') { const parts = E.splitToFit(tris, [bed[0] - 4, bed[1] - 4, bed[2] - 2]); if (parts.length < 2) { ED.note = 'It already fits the bed.'; edRender(); return; } const g = parts.map(E.ground), a = E.arrange(g, [bed[0] * 4, bed[1] * 4], 6); edSet(Float32Array.from([].concat(...g.map((p, i) => Array.from(E.translate(p, a.offsets[i][0], a.offsets[i][1], 0))))), 'Split into ' + parts.length + ' pieces that each fit the bed. Glue them or add pegs in the slicer.'); }
+      else if (k === 'arrange') { const st = G.stats(tris); ED.note = 'Pieces are already arranged when you cut or split; the slicer\'s Arrange does the rest.'; edRender(); }
+      else if (k === 'hollow') { const w = +$('#edw').value || 2; ED.note = 'Hollowing...'; edRender(); setTimeout(() => { const r = E.hollow(tris, w, {}); if (!r.hollow) { ED.note = r.reason; ED.warn = true; edRender(); return; } ED.hist.push(tris); tris = r.tris; preview.set(tris); show(); ED.note = 'Hollowed with ' + w + ' mm walls (inside cavity ' + (r.cavityVoxels * r.voxel ** 3 / 1000).toFixed(1) + ' cm³).'; edRender(); }, 30); }
+      else if (k === 'chkov') { const f = E.overhangFlags(tris, 45); let n = 0; f.forEach(x => n += x); edFlags('ov', f, n ? `${n} faces hang over thin air at more than 45 degrees (red). Turn on supports or press Auto-orient.` : 'No overhangs past 45 degrees.'); }
+      else if (k === 'chkthin') { ED.note = 'Checking...'; edRender(); setTimeout(() => { const r = E.thinWalls(tris, 1.2), fl = E.thinFlags(tris, r.thin, r.voxel).map(x => x ? 2 : 0); ED.warn = r.share > .02; edFlags('thin', fl, r.share > .005 ? `About ${(r.share * 100).toFixed(1)}% of the part is thinner than 1.2 mm (blue). Thicken those spots or use a smaller nozzle.` : 'No walls thinner than 1.2 mm found.'); }, 30); }
+      else if (k === 'chkoff') { preview.set(tris); ED.note = ''; edRender(); }
+    } catch (err) { ED.note = 'That did not work: ' + err.message; ED.warn = true; edRender(); }
+  });
   const save = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); };
   const fname = () => (cur.id + (cur.id === 'cutout' || cur.id === 'plaque' ? (P.mode === 'text' ? '_' + (src.text || '').replace(/\W+/g, '').slice(0, 12) : '') : '')).replace(/\W+/g, '_');
   function setGen(id) { cur = GEN.find(g => g.id === id); P = defaults(cur); P.mode = cur.inputs.includes('source') ? (P.mode || 'image') : 'image'; if (cur.inputs.includes('source')) P.mode = src.img ? 'image' : 'text'; if (P.ring) P.ring = P.mode === 'text' ? 'left' : 'top'; renderTabs(); renderControls(); regen(); }
@@ -167,7 +201,8 @@
     else if (t.id === 'printer') { printer = PRINTERS.find(p => p.id === t.value); try { localStorage.setItem('3dp-printer', printer.id); } catch (er) { } show(); preview.draw(); }
   });
   /* ---------- importing models and the photo helper ---------- */
-  const HELPER = 'http://localhost:8788';
+  const HELPER = location.port === '8788' ? location.origin : 'http://localhost:8788';
+  const IN_APP = location.port === '8788';
   function loadModelFile(f) {
     const rd = new FileReader(); rd.onload = () => { try { src.model = { t: window.MODEL.parse(rd.result, f.name), name: f.name }; if (cur.id !== 'model' && cur.id !== 'photo3d') setGen('model'); if (cur.id === 'model') P.up = /\.(stl)$/i.test(f.name) ? 'z' : 'y'; renderControls(); regen(); } catch (e) { lastErr = e.message; tris = null; if (cur.id !== 'model') setGen('model'); show(); preview.set(null); } }; rd.readAsArrayBuffer(f);
   }
@@ -177,10 +212,10 @@
     if (cur.id !== 'photo3d') return;
     try { const c = new AbortController(), to = setTimeout(() => c.abort(), 1500), r = await fetch(HELPER + '/ping', { signal: c.signal }); clearTimeout(to); const j = await r.json(); src.helper = j;
       const bar = $('#p3bar i'); if (bar) bar.style.width = (j.state === 'busy' ? j.pct : 0) + '%';
-      if (j.vram >= 14 && !src.q16) { src.q16 = 1; P.quality = 'max'; if (cur.id === 'photo3d') renderControls(); } if (j.state === 'ready') { if (!src.busy) p3msg(src.done || 'Helper is ready on ' + j.device + (j.vram ? ' (' + j.vram + ' GB)' : '') + '.', 'ok'); } else if (j.state === 'busy' || src.busy) p3msg(j.msg, 'mu'); else p3msg(j.msg, j.state === 'error' ? 'bad' : 'mu');
+      if (j.vram >= 14 && !src.q16) { src.q16 = 1; P.quality = 'max'; if (cur.id === 'photo3d') renderControls(); } if (j.state === 'noai') p3msg(j.msg, 'bad'); else if (j.state === 'ready') { if (!src.busy) p3msg(src.done || 'Helper is ready on ' + j.device + (j.vram ? ' (' + j.vram + ' GB)' : '') + '.', 'ok'); } else if (j.state === 'busy' || src.busy) p3msg(j.msg, 'mu'); else p3msg(j.msg, j.state === 'error' ? 'bad' : 'mu');
     } catch (e) { src.helper = null; if (!src.busy) p3msg('The helper is not running on this PC. Start it with start.bat, then wait a moment.', 'bad'); }
   }
-  setInterval(ping, 1000);
+  setInterval(ping, 1000); if (IN_APP) setInterval(() => fetch(HELPER + '/ping').catch(() => { }), 1000);
   const b64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(f); });
   async function makePhoto() {
     if (!src.views.front) { p3msg('Add a front photo first.', 'bad'); return; } if (src.busy) return; src.busy = true; src.done = ''; const t0 = Date.now();
@@ -230,9 +265,10 @@
     if (!st) { el.innerHTML = `<p class="xs bad">${esc(SS.err || 'Looking for the helper...')}</p><p class="xs mu">Slicing happens on the computer that has ElegooSlicer installed. Install the helper there (photo3d.zip, then setup.bat, then start-shop.bat).</p>`; return; }
     const sel = k => { const cur = (st.profile || {})[k] || (st.presets[k] || [])[0] || ''; return `<div class="row"><label class="lb">${k === 'machine' ? 'Printer' : k === 'process' ? 'Quality profile' : 'Filament'}</label><select data-ss="${k}">${(st.presets[k] || []).map(n => `<option ${n === cur ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>`; };
     const where = st.remote ? `Slicing on the shop computer (${esc(st.remote)}).` : `Slicing on this computer (${esc(st.host || '')}).`;
-    el.innerHTML = `<p class="xs ${st.exe_found || st.remote ? 'ok' : 'bad'}">${where} ${st.remote ? '' : st.exe_found ? 'Slicer found.' : 'No ElegooSlicer was found on this computer.'}</p>
+    el.innerHTML = `<p class="xs ${st.exe_found || st.remote ? 'ok' : 'bad'}">${where} ${st.remote ? '' : st.exe_found ? 'Slicer found.' : 'No slicer found. Open Setup at the top and press Install next to Slicer.'}</p>
 ${(st.presets.machine || []).length ? sel('machine') + sel('process') + sel('filament') : '<p class="xs mu">No saved slicer settings found. Open ElegooSlicer once, choose the Centauri Carbon, then reopen this.</p>'}
 <div class="row"><label class="lb">Printer address</label><input type="text" id="ssip" value="${esc(ip)}" placeholder="use Find my printer above"></div>
+${st.lan ? `<p class="xs ok">Shop mode is on. On your other computer enter: ${esc((st.addresses || []).join('  or  '))} and PIN <b>${esc(st.pin)}</b></p>` : ''}
 <div class="row"><button data-ss-go="slice">Slice only</button><button data-ss-go="send" class="ok">Slice and send</button><button data-ss-go="${SS.confirm ? 'start-yes' : 'start'}" class="${SS.confirm ? 'bad' : ''}">${SS.confirm ? 'Yes: bed is clear, START printing' : 'Slice, send and start'}</button></div>
 <div id="p3bar"><i id="ssbar"></i></div><p class="xs" id="ssmsg"></p><p id="ssdl"></p>
 <details class="xs mu"><summary>Slicing on another computer?</summary><p>If ElegooSlicer is on your shop computer: run start-shop.bat there, note its PIN, then enter its address and PIN here. This computer will send the model over to be sliced and printed.</p><div class="row"><input type="text" id="ssremote" placeholder="http://192.168.1.50:8788" value="${esc(st.remote || '')}"><input type="text" id="sspin" placeholder="PIN"><button data-ss-go="remote">Save</button></div></details>`;
@@ -255,6 +291,16 @@ ${(st.presets.machine || []).length ? sel('machine') + sel('process') + sel('fil
   });
   document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.ss) shop('/shop/config', { profile: Object.fromEntries([...document.querySelectorAll('[data-ss]')].map(x => [x.dataset.ss, x.value])) }).catch(() => { }); });
   $('#ss') && $('#ss').addEventListener('toggle', () => { if ($('#ss').open) ssLoad(); });
+  /* ---------- setup (installs the slicer and the AI engine from inside the program) ---------- */
+  async function setupRender() {
+    const el = $('#setupbox'); if (!el) return;
+    try { const st = await (await fetch(HELPER + '/setup/status')).json(); const row = (k, title, why) => { const t = st[k]; return `<div class="setrow"><div><b>${title}</b><div class="xs mu">${why}</div></div><div class="setst">${t.state === 'ready' ? '<span class="ok">Installed</span>' : t.state === 'installing' ? `<span class="mu">${esc(t.msg || 'Working...')}</span><div id="p3bar"><i style="width:${t.pct}%"></i></div>` : `<button class="ok" data-setup="${k}">Install</button>${t.state === 'error' ? `<div class="xs bad">${esc(t.msg)}</div>` : ''}`}</div></div>`; };
+      el.innerHTML = row('slicer', 'Slicer', 'OrcaSlicer, the engine ElegooSlicer is built on, with the Centauri Carbon settings. About 150 MB.') + row('ai', 'AI engine (photo to 3D)', 'Hunyuan3D 2 and TripoSR, about 10 GB, needs an NVIDIA graphics card. Only needed for Photo to 3D.') + `<p class="xs mu">${st.nvidia ? 'NVIDIA graphics card found.' : 'No NVIDIA graphics card found: Photo to 3D will be very slow.'} Files go in ${esc(st.dir || '')}</p>`;
+      $('#setupsum').textContent = 'Setup' + ((st.slicer.state === 'ready' && st.ai.state === 'ready') ? ' (all installed)' : ' (' + [st.slicer.state !== 'ready' ? 'slicer' : '', st.ai.state !== 'ready' ? 'AI engine' : ''].filter(Boolean).join(' and ') + ' not installed)');
+    } catch (e) { el.innerHTML = '<p class="xs mu">Setup is available in the 3DPrintica program (not the web page).</p>'; }
+  }
+  if (IN_APP) { $('#setup').style.display = ''; setupRender(); setInterval(setupRender, 1500); }
+  document.addEventListener('click', async e => { const k = e.target.dataset && e.target.dataset.setup; if (k) { e.target.disabled = true; await fetch(HELPER + '/setup/install?what=' + k, { method: 'POST', body: '{}' }); setupRender(); } });
   function loadDemo() { const c = document.createElement('canvas'); c.width = 300; c.height = 300; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 300, 300); x.fillStyle = '#000'; x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 60 : 130; x.lineTo(150 + r * Math.cos(a), 160 + r * Math.sin(a)); } x.closePath(); x.fill(); const im = new Image(); im.onload = () => { src.img = im; if (cur.inputs.includes('source')) P.mode = 'image'; renderControls(); regen(); }; im.src = c.toDataURL(); }
   $('#printer').innerHTML = PRINTERS.map(p => `<option value="${p.id}" ${p.id === printer.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   window.P3 = { GEN, setGen, get tris() { return tris; }, get P() { return P; }, src, loadDemo, G };
