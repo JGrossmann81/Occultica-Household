@@ -22,7 +22,7 @@ inline std::vector<Spec> makeSpecs() {
     P("Bend", "st", 0, 24, d0[10], "%.0f st"), P("Level", "dB", -30, 6, d0[11], "%+.1f dB"),
   };
 }
-inline std::vector<Group> makeGroups() { return {{"Instrument", {Preset, Model, Tone, Breath, Haunt, Level}}, {"Bow & hand", {Attack, Release, Glide, Bend}}, {"Motion", {VibRate, VibDepth, Motion}}}; }
+inline std::vector<Group> makeGroups() { return {{"Instrument", {Model, Tone, Breath, Haunt, Level}}, {"Bow & hand", {Attack, Release, Glide, Bend}}, {"Motion", {VibRate, VibDepth, Motion}}}; }
 
 struct SinTab { double t[4098]; SinTab() { for (int i = 0; i <= 4097; ++i) t[i] = std::sin(2 * kPi * i / 4096.0); } };
 inline double sinCyc(double ph) { static const SinTab st; double x = ph * 4096; long long i = (long long)std::floor(x); double f = x - double(i); i &= 4095; return st.t[i] + (st.t[i + 1] - st.t[i]) * f; }

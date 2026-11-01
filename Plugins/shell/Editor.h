@@ -61,7 +61,7 @@ public:
     // header
     auto head = juce::Rectangle<float>(0, 0, (float)getWidth(), (float)headerH);
     occart::drawMotif(g, juce::Rectangle<float>(getWidth() * 0.44f, 8, getWidth() * 0.54f, headerH - 16.f), th, proc.level.load(), tsec);
-    g.setColour(juce::Colour(th.glow).withAlpha(0.18f)); g.setFont(juce::Font(juce::FontOptions(46.f, juce::Font::bold))); g.drawText(juce::String(proc.info.name).toUpperCase(), 22, 12, 420, 56, juce::Justification::centredLeft);
+    g.setColour(juce::Colour(th.glow).withAlpha(0.22f)); g.setFont(juce::Font(juce::FontOptions(42.f, juce::Font::bold))); g.drawText(juce::String(proc.info.name).toUpperCase(), 23, 12, 420, 56, juce::Justification::centredLeft);
     g.setColour(juce::Colour(th.ink)); g.setFont(juce::Font(juce::FontOptions(42.f, juce::Font::bold))); g.drawText(juce::String(proc.info.name).toUpperCase(), 20, 10, 420, 56, juce::Justification::centredLeft);
     g.setColour(juce::Colour(th.ink).withAlpha(0.65f)); g.setFont(juce::Font(juce::FontOptions(13.f))); g.drawFittedText(proc.info.blurb, 22, 64, getWidth() * 0.42 - 30, 38, juce::Justification::topLeft, 3);
     g.setColour(juce::Colour(th.accent).withAlpha(0.5f)); g.drawLine(16, (float)headerH + 2, (float)getWidth() - 16, (float)headerH + 2, 1.2f);
@@ -69,7 +69,7 @@ public:
     for (auto& pn : panels) {
       g.setColour(juce::Colours::black.withAlpha(0.32f)); g.fillRoundedRectangle(pn.r, 10.f); g.setColour(juce::Colour(th.accent).withAlpha(0.28f)); g.drawRoundedRectangle(pn.r, 10.f, 1.f);
       g.setColour(juce::Colour(th.accent)); g.setFont(juce::Font(juce::FontOptions(13.f, juce::Font::bold))); g.drawText(juce::String(pn.name).toUpperCase(), (int)pn.r.getX() + 12, (int)pn.r.getY() + 6, (int)pn.r.getWidth() - 20, 20, juce::Justification::centredLeft);
-      for (auto& c : pn.ctls) { g.setColour(juce::Colour(th.ink).withAlpha(0.85f)); g.setFont(juce::Font(juce::FontOptions(12.f))); g.drawFittedText(proc.info.specs[(size_t)c->id].name, c->labelR, juce::Justification::centred, 2); }
+      for (auto& c : pn.ctls) { g.setColour(juce::Colour(th.ink).withAlpha(0.85f)); g.setFont(juce::Font(juce::FontOptions(12.f))); g.drawFittedText(proc.info.specs[(size_t)c->id].name, c->labelR, juce::Justification::centred, 2, 1.0f); }
     }
     g.setColour(juce::Colour(th.ink).withAlpha(0.55f)); g.setFont(juce::Font(juce::FontOptions(12.f))); g.drawText("Sound quality", footerR.withWidth(100.f).toNearestInt(), juce::Justification::centredRight);
   }
