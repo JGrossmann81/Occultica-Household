@@ -1,0 +1,39 @@
+name: 3DPrintica program
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Build the program
+        working-directory: 3DPrintica-App
+        shell: pwsh
+        run: |
+          python -m pip install pyinstaller pillow
+          New-Item -ItemType Directory build_ui | Out-Null
+          Get-ChildItem ../3DPrintica -Exclude photo3d.zip | Copy-Item -Destination build_ui -Recurse
+          python -c "from PIL import Image; Image.open('../3DPrintica/icon-512.png').convert('RGBA').save('3DPrintica.ico', sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])"
+          pyinstaller --noconfirm --noconsole --name 3DPrintica --icon 3DPrintica.ico --add-data "build_ui;ui" --add-data "src/ai_worker.py;." --add-data "src/meshfix.py;." --add-data "src/mc_core.py;." --paths src src/main.py
+      - name: Smoke test (program starts and serves the page)
+        working-directory: 3DPrintica-App
+        shell: pwsh
+        run: |
+          $env:P3D_DATA = "$PWD\smoke_data"
+          Start-Process dist\3DPrintica\3DPrintica.exe -ArgumentList '--nowindow'
+          $ok = $false
+          foreach ($i in 1..30) { try { $p = Invoke-RestMethod http://127.0.0.1:8788/ping; $ok = $true; break } catch { Start-Sleep 1 } }
+          if (-not $ok) { throw 'program did not start' }
+          $p | ConvertTo-Json
+          if ((Invoke-WebRequest http://127.0.0.1:8788/).Content -notmatch '3DPRINTICA') { throw 'page not served' }
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" 3DPrintica-App\installer\3DPrintica.iss
+      - uses: actions/upload-artifact@v4
+        with: { name: 3DPrintica-Setup, path: 3DPrintica-App/Output/3DPrintica-Setup.exe }
