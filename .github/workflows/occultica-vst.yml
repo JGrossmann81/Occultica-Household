@@ -44,13 +44,20 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: editor-snapshots, path: snapshots }
+      - name: Keep the snapshots on a branch (so they can be looked at without downloading)
+        if: always()
+        shell: bash
+        run: |
+          git config user.name "github-actions"; git config user.email "actions@users.noreply.github.com"
+          mkdir -p /tmp/snaps && cp snapshots/*.png /tmp/snaps/ || true
+          git checkout --orphan vst-previews && git rm -rf . -q && cp /tmp/snaps/*.png . && git add *.png && git commit -qm "editor snapshots" && git push -f origin vst-previews
       - name: Plugin validation (pluginval)
         continue-on-error: true
         shell: pwsh
         run: |
           Invoke-WebRequest https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip -OutFile pv.zip
           Expand-Archive pv.zip pv
-          Get-ChildItem build -Recurse -Directory -Filter *.vst3 | ForEach-Object { Write-Host "== $($_.Name)"; & pv/pluginval.exe --strictness-level 5 --validate-in-process --skip-gui-tests $_.FullName; if ($LASTEXITCODE -ne 0) { Write-Host "pluginval failed for $($_.Name)" } }
+          Get-ChildItem build -Recurse -Directory -Filter *.vst3 | ForEach-Object { Write-Host "== $($_.Name)"; $p = Start-Process pv/pluginval.exe -ArgumentList '--strictness-level','5','--validate-in-process','--skip-gui-tests',$_.FullName -Wait -PassThru -NoNewWindow; Write-Host "pluginval exit code for $($_.Name): $($p.ExitCode)"; if ($p.ExitCode -ne 0) { exit 1 } }
       - name: Collect
         shell: pwsh
         run: |
