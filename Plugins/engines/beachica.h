@@ -338,7 +338,7 @@ struct Engine : EngineBase {
       mwS += (mw - mwS) * 0.05; bendS += (bend - bendS) * 0.2; expS += (1 - expS) * 0.02; const int mwm = (int)jsround(V[ModWheel]); const double mwS_ = mwS;
       const double wlT = clampf(V[Waterline] - (mwm == 0 ? 130 * mwS_ : 0), -100, 100); wlS += (wlT - wlS) * 0.01; const double wlE_ = wlE = wlS;
       const double storm = clampf(V[Storm] * 0.01 + (mwm == 1 ? mwS_ : 0), 0, 1), wsize = clampf(V[WaveSize] * 0.01 + (mwm == 2 ? mwS_ * 0.6 : 0), 0, 1), fibA = clampf(V[FibAmount] * 0.01 + (mwm == 3 ? mwS_ : 0), 0, 1);
-      const double brightEff = V[Bright];  // (wheel -> Brightness is listed but never applied, as in the original)
+      const double brightEff = mwm == 4 ? V[Bright] + (100 - V[Bright]) * mwS_ : V[Bright];  // mod wheel 'Brightness': opens the key voices' tone and the key bus filter toward fully bright (not in the web original; other wheel choices are unchanged)
       const double depth = clampf(-wlE_ * 0.01, 0, 1), height = clampf(wlE_ * 0.01, 0, 1);
       const double bob = (1 - std::min(1.0, std::fabs(wlE_) / 30)) * 0.3 * std::sin(TWO_PI * (ph[0] + 0.1)), dEff = clampf(depth + bob, 0, 1);
       const int day = (int)jsround(V[Day]); const double gullDay = day == 0 ? 1 : (day == 1 ? 0.7 : 0.04), cricketDay = day == 0 ? 0 : (day == 1 ? 0.25 : 1);
@@ -379,7 +379,7 @@ struct Engine : EngineBase {
       }
       const double pebRate = 160 * (backMix * 0.9 + crashMix * 0.5) * pe * (0.3 + 0.7 * wsize) * pebG, pebP = pebRate * dt;
       const double surfLvl0 = surfPct * (1 + 0.8 * storm) * surfG, sz = 0.3 + 1.2 * wsize, swellK = (1 - ts) + ts * (0.3 + 0.7 * std::min(1.0, swellMix * 1.2)), swellV = std::min(1.0, swellMix * 1.2);
-      const double spr = V[Spread] * 0.01, br = V[Bright] * 0.01, foc = V[Focus] * 0.01, bf = std::pow(2.0, bendS * 2 / 12);
+      const double spr = V[Spread] * 0.01, br = brightEff * 0.01, foc = V[Focus] * 0.01, bf = std::pow(2.0, bendS * 2 / 12);
       const double cf[3] = {std::pow(2.0, -(2 + 18 * spr) / 1200), 1, std::pow(2.0, (2 + 18 * spr) / 1200)};
       const double useGull = gullG;
       const bool cricketOn = cricketDay * ni * cricG > 0.002;

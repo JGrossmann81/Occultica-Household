@@ -13,11 +13,11 @@ static const Row ROWS[] = {
     {"Vowel Steps", {0, 2, 0, 3, 0, 0, 0.50, 0.05, 5.0, 0.15, 2, 3.5, 1.00, 0.20, 1, 0.03, 3, 0.50, 0.3, 0.5, 6, 0.02, 0.30, -7}},
     {"Random Talker", {0, 1, 2, 3, 0, 0, 0.55, 0.10, 5.5, 0.20, 3, 5.0, 1.00, 0.00, 0, 0.06, 3, 0.50, 0.3, 0.5, 6, 0.02, 0.30, -7}},
     {"Whisper Voices", {0, 3, 2, 0, 0, 0, 0.50, 0.50, 5.0, 0.00, 0, 0.5, 0, 0.50, 1, 0.04, 3, 0.50, 0.3, 0.5, 6, 0.15, 0.50, -4}},
-    {"Classic Vocoder", {1, 1, 0, 3, 0, 0, 0.50, 0.00, 5.0, 0.10, 0, 0.5, 0, 0.20, 1, 0.03, 3, 0.50, 0.6, 0.7, 12, 0.01, 0.20, -6}},
-    {"Choral Vocoder", {1, 0, 0, 3, 0, 0, 0.50, 0.10, 5.0, 0.30, 0, 0.5, 0, 0.70, 1, 0.04, 4, 0.45, 0.5, 0.6, 12, 0.08, 0.50, -6}},
-    {"Noise Vocoder", {1, 3, 0, 3, 0, 0, 0.50, 0.00, 5.0, 0.00, 0, 0.5, 0, 0.00, 1, 0.03, 4, 0.40, 0.4, 0.0, 12, 0.01, 0.20, -5}},
-    {"Talkbox Lead", {2, 1, 0, 3, 0, 0, 0.50, 0.00, 5.5, 0.30, 0, 0.5, 0, 0.00, 0, 0.05, 3, 0.40, 0.5, 0.6, 12, 0.01, 0.25, -6}},
-    {"Talkbox Pad", {2, 2, 0, 3, 0, 0, 0.50, 0.00, 4.8, 0.20, 0, 0.5, 0, 0.40, 1, 0.04, 3, 0.50, 0.4, 0.5, 12, 0.06, 0.50, -6}},
+    {"Robot Voice", {1, 1, 0, 3, 0, 0, 0.50, 0.00, 5.0, 0.10, 0, 0.5, 0, 0.20, 1, 0.03, 3, 0.50, 0.6, 0.7, 12, 0.01, 0.20, -6}},
+    {"Robot Choir", {1, 0, 0, 3, 0, 0, 0.50, 0.10, 5.0, 0.30, 0, 0.5, 0, 0.70, 1, 0.04, 4, 0.45, 0.5, 0.6, 12, 0.08, 0.50, -6}},
+    {"Whisper Robot", {1, 3, 0, 3, 0, 0, 0.50, 0.00, 5.0, 0.00, 0, 0.5, 0, 0.00, 1, 0.03, 4, 0.40, 0.4, 0.0, 12, 0.01, 0.20, -5}},
+    {"Vowel Lead", {2, 1, 0, 3, 0, 0, 0.50, 0.00, 5.5, 0.30, 0, 0.5, 0, 0.00, 0, 0.05, 3, 0.40, 0.5, 0.6, 12, 0.01, 0.25, -6}},
+    {"Vowel Pad", {2, 2, 0, 3, 0, 0, 0.50, 0.00, 4.8, 0.20, 0, 0.5, 0, 0.40, 1, 0.04, 3, 0.50, 0.4, 0.5, 12, 0.06, 0.50, -6}},
 };
 constexpr int kRows = 13;
 inline std::vector<Spec> makeSpecs() {
@@ -233,6 +233,7 @@ struct Engine : EngineBase {
 };
 inline Info info() {
   return Info{"voxica", "Voxica", "Vocal synthesizer: glottal, saw, pulse or whisper source through five morphing formants, with a choir stack and a vowel sequencer.", makeSpecs(), makeGroups(),
-              Theme{"voxica", 0xff2b1a2e, 0xff0c060d, 0xffff8fb8, 0xfffbe6ef, 0xffffb8d3}, [](double sr) { return std::unique_ptr<EngineBase>(new Engine(sr)); }};
+              Theme{"voxica", 0xff2b1a2e, 0xff0c060d, 0xffff8fb8, 0xfffbe6ef, 0xffffb8d3}, [](double sr) { return std::unique_ptr<EngineBase>(new Engine(sr)); },
+              {Mode, Bands, Bandwidth, Sibilance, Unvoiced, InGain}};   // vocoder/talkbox settings need an audio input this synth does not have: hidden
 }
 }}  // namespace occ::voxica

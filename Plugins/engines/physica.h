@@ -82,7 +82,7 @@ inline double rnd(double x) { return std::floor(x + 0.5); }
 inline std::vector<Spec> makeSpecs() {
   std::vector<std::string> src = {"- Off -", "Balloon", "Motor", "Siren disc", "Bowed squeal", "Bottle", "Dripping water", "Slinky", "Mousetrap", "Twanged ruler", "Fan", "Electric arc", "Vortex whistle", "Edge-tone pipe", "Hurdy-gurdy wheel", "Card in spokes", "Washboard", "Singing bowl", "Relay buzzer", "Solenoid chime", "Vibration motor", "Hard-drive arm", "Rubber-band wheel", "Chime carousel"};
   std::vector<std::string> fxn = {"- Off -", "Spring tube", "Underwater mic", "Slinky echo", "Garden hose", "Fan tremolo", "Vacuum pump", "Paper cups", "Bucket"};
-  std::vector<std::string> pre = {"Default", "Breakfast Machine", "Submarine", "Haunted Garage", "Balloon Orchestra", "Mad Scientist", "Plumbing", "Toy Factory", "Input Eater"};
+  std::vector<std::string> pre = {"Default", "Breakfast Machine", "Submarine", "Haunted Garage", "Balloon Orchestra", "Mad Scientist", "Plumbing", "Toy Factory", "Input Eater (no input: drones only)"};
   std::vector<std::string> drv = {"None", "Input", "Slot 1", "Slot 2", "Slot 3", "Slot 4", "Chaos"};
   std::vector<Spec> sp = {P("Preset", "", 0, (double)pre.size() - 1, 0, "%.0f", false, pre), P("Volume", "dB", -24, 12, 0, "%.1f dB"),
     P("Mode", "", 0, 2, 2, "%.0f", false, {"Synth (notes)", "Effect (input)", "Both"}),
@@ -107,7 +107,7 @@ inline std::vector<Group> makeGroups() {
   std::vector<int> a = sg(0), b = sg(1), c = sg(2), d = sg(3), fx;
   a.insert(a.end(), b.begin(), b.end()); c.insert(c.end(), d.begin(), d.end());
   for (int i = 0; i < 12; ++i) fx.push_back(FxBase + i);
-  return {{"Machines 1-2", a}, {"Machines 3-4", c}, {"Rooms made of things", fx}, {"Master and wild controls", {Volume, Mode, Input, Dry, Chaos, Wear, Gravity, Overload}}};
+  return {{"Machines 1-2", a}, {"Machines 3-4", c}, {"Rooms made of things", fx}, {"Master and wild controls", {Volume, Chaos, Wear, Gravity, Overload}}};
 }
 /* ---- small DSP helpers */
 struct Rng {
@@ -549,6 +549,7 @@ struct Engine : EngineBase {
 };
 inline Info info() {
   return Info{"physica", "Physica", "Electro-mechanical synth: 23 modelled machines (balloon, motor, siren, bowed squeal, drips, slinky, mousetrap, ruler, fan, arc and more) in four slots that can drive one another, through three rooms made of things (spring tube, underwater mic, slinky echo, hose, fan tremolo, vacuum pump, paper cups, bucket), with Chaos, Wear, Gravity and a fuse that can blow.",
-              makeSpecs(), makeGroups(), Theme{"physica", 0xff2e2417, 0xff0e0a06, 0xffe39a2e, 0xfff7ecd6, 0xfff5c264}, [](double sr) { return std::unique_ptr<EngineBase>(new Engine(sr)); }};
+              makeSpecs(), makeGroups(), Theme{"physica", 0xff2e2417, 0xff0e0a06, 0xffe39a2e, 0xfff7ecd6, 0xfff5c264}, [](double sr) { return std::unique_ptr<EngineBase>(new Engine(sr)); },
+              {Mode, Input, Dry}};   // this plugin has no audio input: Effect mode, Input and Dry cannot do anything, so they are hidden
 }
 }}  // namespace occ::physica

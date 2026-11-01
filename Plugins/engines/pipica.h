@@ -12,7 +12,7 @@ enum { Great, Swell, Pedal };
 enum { F_Principal, F_Flute, F_String, F_Reed };
 enum { R_Principal, R_Octave, R_Diapason, R_Hohl, R_Gedackt, R_Rohr, R_Tibia, R_Spitz, R_OpenFlute, R_Nasard, R_Salicional, R_Gamba, R_Violin, R_Trumpet, R_Tuba, R_Oboe, R_Clarinet, R_Regal, R_Vox, R_Kinura, R_Count };
 enum { P_None, P_Xylophone, P_Glock, P_Chimes, P_BassDrum, P_Zimbel };
-enum { Preset, Type, Place, RoomMix, Size, DecayTrim, KeyMode, Split, StopBase, CplSwGt = StopBase + kDivs * kStopsPer, CplGtPed, CplSwPed, CplSuper, CplSub, SwellBox, TremDepth, TremRate, WindSag, WindFlutter, WindNoise, Chiff, Bright, Detune, Temper, A4, Release, Volume, LevelG, LevelS, LevelP, Traps, TrapLevel, BarrelTune, BarrelPlay, Crank, Wobble, TrapKeys, Count };
+enum { Preset, Type, Place, RoomMix, Size, DecayTrim, KeyMode, Split, StopBase, CplSwGt = StopBase + kDivs * kStopsPer, CplGtPed, CplSwPed, CplSuper, CplSub, SwellBox, TremDepth, TremRate, WindSag, WindFlutter, WindNoise, Chiff, Bright, Detune, Temper, A4, Release, Volume, LevelG, LevelS, LevelP, Traps, TrapLevel, BarrelTune, BarrelPlay, Crank, Wobble, TrapKeys, Velocity, Count };
 enum { M_Scale, M_Width, M_Depth, M_Height, M_Roof, M_Curve, M_Topology, M_OpenL, M_OpenR, M_OpenFront, M_OpenBack, M_OpenFloor, M_OpenCeil, M_Material, M_Damping, M_Warmth, M_Diffusion, M_Speed, M_SrcX, M_SrcY, M_ListX, M_ListY, M_Orbit, M_OrbitR, M_Breathe, M_BreatheRate, M_Quake, M_Inertia, M_Order, M_EarlyLate, M_Freeze, M_Spread, M_Mix, M_Count };
 inline int stopId(int d, int i) { return StopBase + d * kStopsPer + i; }
 inline int rnd(double x) { return (int)std::floor(x + 0.5); }
@@ -346,7 +346,7 @@ inline std::vector<Spec> makeSpecs() {
     P("Volume", "dB", -30, 6, -6, "%.1f dB"), P("Great level", "dB", -24, 6, 0, "%.1f dB"), P("Swell level", "dB", -24, 6, 0, "%.1f dB"), P("Pedal level", "dB", -24, 6, 0, "%.1f dB"),
     P("Traps", "", 0, 1, 0, "%.0f", false, {"Off", "On"}), P("Traps level", "dB", -24, 6, -3, "%.1f dB"),
     P("Barrel tune", "", 0, 3, 0, "%.0f", false, tuNames), P("Barrel", "", 0, 1, 0, "%.0f", false, {"Stopped", "Cranking"}),
-    P("Crank speed", "%", 40, 160, 100, "%.0f %%"), P("Crank wobble", "%", 0, 100, 25, "%.0f %%"), P("Trap keys", "", 0, 1, 0, "%.0f", false, {"Off", "Keys below C2"})};
+    P("Crank speed", "%", 40, 160, 100, "%.0f %%"), P("Crank wobble", "%", 0, 100, 25, "%.0f %%"), P("Trap keys", "", 0, 1, 0, "%.0f", false, {"Off", "Keys below C2"}), P("Velocity", "%", 0, 1, 0, "%.2f")};
   for (auto& x : r) s.push_back(x);
   return s;
 }
@@ -355,11 +355,11 @@ inline std::vector<Group> makeGroups() {
   return {{"Organ", {Type, Place, RoomMix, Size, DecayTrim}}, {"Great stops", sg(Great)}, {"Swell stops", sg(Swell)}, {"Pedal stops", sg(Pedal)},
     {"Couplers and box", {CplSwGt, CplGtPed, CplSwPed, CplSuper, CplSub, SwellBox}}, {"Keyboards", {KeyMode, Split, LevelG, LevelS, LevelP}},
     {"Wind and voicing", {TremDepth, TremRate, WindSag, WindFlutter, WindNoise, Chiff, Bright, Detune, Release}}, {"Tuning", {Temper, A4}},
-    {"Theatre traps", {Traps, TrapKeys, TrapLevel}}, {"Barrel organ", {BarrelTune, BarrelPlay, Crank, Wobble}}, {"Output", {Volume}}};
+    {"Theatre traps", {Traps, TrapKeys, TrapLevel}}, {"Barrel organ", {BarrelTune, BarrelPlay, Crank, Wobble}}, {"Output", {Volume, Velocity}}};
 }
 inline uint32_t hash3(uint32_t a, uint32_t b, uint32_t c) { uint32_t h = (a * 0x9E3779B1U) ^ ((b + 0x7F4A7C15U) * 0x85EBCA6BU) ^ ((c + 0x165667B1U) * 0xC2B2AE35U); h = h ^ (h >> 15); h *= 0x2C1B3C6DU; h = h ^ (h >> 12); return h; }
 struct Stop { bool on = false; int idx = 0; double env = 0, attInc = 0.01, relMul = 0.99, off = 0; double ph[5] = {}, pe[5] = {}; const StopDef* def = nullptr; double cInc[5] = {}, cAmp[5] = {}; const float* cTab[5] = {}; double pd[5] = {}; };
-struct Voice { bool active = false, gate = false; int div = 0, note = 60, key = 60, chan = 0; long long age = 0; double f0 = 261, panL = 0.7, panR = 0.7, chiffEnv = 0, chiffAmt = 0, chiffTau = 0.99, s1 = 0, s2 = 0, vol = 1; uint32_t rng = 1; Stop st[kStopsPer]; };
+struct Voice { bool active = false, gate = false; int div = 0, note = 60, key = 60, chan = 0; long long age = 0; double f0 = 261, panL = 0.7, panR = 0.7, chiffEnv = 0, chiffAmt = 0, chiffTau = 0.99, s1 = 0, s2 = 0, vol = 1, vg = 1; uint32_t rng = 1; Stop st[kStopsPer]; };
 struct Trap { bool on = false; int kind = 0; double t = 0, a = 1, f = 100, ph = 0, lp = 0, hp = 0; };
 struct Bell { bool on = false; double f = 2000, t = 0, ph[3] = {0, 0, 0}; };
 static const double XY[3][2] = {{1, 1}, {3, 0.45}, {6, 0.15}}, GL[4][2] = {{1, 1}, {2.76, 0.5}, {5.4, 0.3}, {8.93, 0.15}}, CH[5][2] = {{0.5, 0.5}, {1, 1}, {2, 0.4}, {2.76, 0.3}, {4.1, 0.15}};
@@ -433,8 +433,9 @@ struct Engine : EngineBase {
     for (int i = 0; i < M_Count; ++i) room.v[i] = rv[i];
   }
   // ---- playing
-  void noteOn(int note, double) override { noteOnCh(0, note); }
+  void noteOn(int note, double vel) override { curVel = vel; noteOnCh(0, note); }
   void noteOff(int note) override { noteOffCh(0, note); }
+  double curVel = 1;   // velocity of the note being started; 'Velocity' blends the voice level from fixed (0, the classic organ) to velocity scaled (1)
   void noteOnCh(int ch, int note) {
     int type = rnd(v[Type]);
     if (type == Theatre && v[Traps] > 0.5) {
@@ -491,7 +492,7 @@ struct Engine : EngineBase {
     }
     vo.chiffAmt = lvl > 0 ? chiff / lvl * v[Chiff] / 100 : 0; vo.chiffEnv = 1;
     vo.chiffTau = std::exp(-1 / ((0.02 + 0.03 * (1 - std::min(1.0, vo.f0 / 2000))) * sr));
-    vo.vol = 1;
+    vo.vol = 1; { const double vs = clampd(v[Velocity], 0, 1); vo.vg = vs > 0 ? (1.0 - vs) + vs * clampd(curVel, 0, 1) : 1.0; }
   }
   void trapHit(int note) {
     int kind = 1;
@@ -511,7 +512,7 @@ struct Engine : EngineBase {
     if (t >= len) {
       t -= len; PNote r = parseNote(str, pos);
       if (r.note < 0) { pos = 0; r = parseNote(str, pos); }
-      pos = r.pos; note = r.note; len = r.beats; if (r.note >= 0) playOn(div, r.note, chan, r.note);
+      pos = r.pos; note = r.note; len = r.beats; if (r.note >= 0) { const double sv = curVel; curVel = 1; playOn(div, r.note, chan, r.note); curVel = sv; }
       if (len <= 0) len = 0.01;
     }
     if (which) { bBasT = t; bBasLen = len; bBasNote = note; bBasPos = pos; } else { bMelT = t; bMelLen = len; bMelNote = note; bMelPos = pos; }
@@ -623,7 +624,7 @@ struct Engine : EngineBase {
         }
         vo.rng = r; vo.s1 = s1; vo.s2 = s2; vo.chiffEnv = ce;
       }
-      for (int i = 0; i < n; ++i) { double acc = tmp[i] * ampT; oLp[i] += acc * vo.panL; oRp[i] += acc * vo.panR; }
+      for (int i = 0; i < n; ++i) { double acc = tmp[i] * ampT * vo.vg; oLp[i] += acc * vo.panL; oRp[i] += acc * vo.panR; }
       bool alive = false; for (int s = 0; s < kStopsPer; ++s) if (vo.st[s].def && vo.st[s].env > 1e-5) alive = true;
       if (!alive && !vo.gate) vo.active = false;
       act += vact;

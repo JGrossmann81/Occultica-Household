@@ -588,6 +588,13 @@ inline std::vector<Spec> makeSpecs() {
   specs.push_back(P("Tempo", "BPM", 40, 240, 120, "%.0f BPM"));
   return specs;
 }
+// What each macro knob does in each factory patch (taken from the patch text's `knob` lines): shown as the knob's label in the editor.
+inline std::string knobLabel(int id, int preset) {
+  if (id < Knob1 || id >= Knob1 + kKnobs) return "";
+  static std::vector<std::vector<std::string>> cache;
+  if (cache.empty()) for (int p = 0; p < 12; ++p) { ParseResult r = parsePatch(PATCHES[p]); std::vector<std::string> l; for (int k = 0; k < kKnobs; ++k) l.push_back(r.ok && r.patch.knob[k].used ? r.patch.knob[k].label : std::string("-")); cache.push_back(l); }
+  return cache[(size_t)clampd(preset, 0, 11)][(size_t)(id - Knob1)];
+}
 inline std::vector<Group> makeGroups() {
   Group a{"Macro knobs 1-8", {}}, b{"Macro knobs 9-16", {}}; for (int i = 0; i < 8; ++i) { a.ids.push_back(Knob1 + i); b.ids.push_back(Knob1 + 8 + i); }
   return {{"Main", {Volume, Voices, Glide, BendRange, Tempo}}, a, b};
@@ -933,6 +940,6 @@ struct Engine : EngineBase {
 };
 inline Info info() {
   return Info{"avoidica", "Avoidica", "Patchable modular-ensemble synth: 41 modules from oscillators, FM, wavetable, pluck and granulator through filters, envelopes, clock and sequencer to delay and reverb, with 12 factory patches and 16 macro knobs.", makeSpecs(), makeGroups(),
-              Theme{"avoidica", 0xff102129, 0xff060b0f, 0xff4fd1c5, 0xffe3f5f2, 0xff8af2e4}, [](double sr) { return std::unique_ptr<EngineBase>(new Engine(sr)); }};
+              Theme{"avoidica", 0xff102129, 0xff060b0f, 0xff4fd1c5, 0xffe3f5f2, 0xff8af2e4}, [](double sr) { return std::unique_ptr<EngineBase>(new Engine(sr)); }, {}, knobLabel};
 }
 }}  // namespace occ::avoidica

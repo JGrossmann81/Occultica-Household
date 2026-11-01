@@ -16,13 +16,18 @@ public:
       : AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)), info(inf), apvts(*this, nullptr, "STATE", makeLayout(inf)) {
     const int n = (int)info.specs.size();
     ptrs.resize(n); sent.assign(n, std::numeric_limits<double>::quiet_NaN());
-    for (int i = 0; i < n; ++i) ptrs[i] = apvts.getRawParameterValue(pid(i));
+    for (int i = 0; i < n; ++i) ptrs[i] = isHidden(info, i) ? nullptr : apvts.getRawParameterValue(pid(i));
     qualityPtr = apvts.getRawParameterValue("quality");
+    tempoId = tempoIdOf(info); if (tempoId >= 0) tempoSrcPtr = apvts.getRawParameterValue("tempoSrc");
   }
   static juce::String pid(int i) { return "p" + juce::String(i); }
+  static bool isHidden(const occ::Info& inf, int i) { for (int h : inf.hidden) if (h == i) return true; return false; }
+  static int tempoIdOf(const occ::Info& inf) { for (size_t i = 1; i < inf.specs.size(); ++i) if (inf.specs[i].name == "Tempo" && inf.specs[i].labels.empty()) return (int)i; return -1; }
+  int tempoId = -1;   // index of the instrument's own "Tempo" parameter (-1: none); with "Tempo source" = Host the tempo follows the host's BPM
   static juce::AudioProcessorValueTreeState::ParameterLayout makeLayout(const occ::Info& inf) {
     juce::AudioProcessorValueTreeState::ParameterLayout L;
     for (size_t i = 0; i < inf.specs.size(); ++i) {
+      if (isHidden(inf, (int)i)) continue;
       const occ::Spec& s = inf.specs[i]; juce::ParameterID id(pid((int)i), 1); const juce::String nm(s.name);
       if (!s.labels.empty()) { juce::StringArray a; for (auto& t : s.labels) a.add(t); L.add(std::make_unique<juce::AudioParameterChoice>(id, nm, a, (int)std::lround(s.def))); }
       else {
@@ -32,6 +37,7 @@ public:
         L.add(std::make_unique<juce::AudioParameterFloat>(id, nm, r, (float)s.def, attrs));
       }
     }
+    if (tempoIdOf(inf) >= 0) L.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("tempoSrc", 1), "Tempo source", juce::StringArray{"Own", "Host"}, 0));
     L.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("quality", 1), "Quality", juce::StringArray{"Standard", "High (2x)", "Ultra (4x)"}, 1));
     return L;
   }
@@ -110,10 +116,16 @@ private:
     const int q = (int)std::lround(qualityPtr->load());
     if (q != quality) { quality = q; triggerAsyncUpdate(); }
     // the Preset (id 0) first, so values the preset writes can be overridden by the rest in the same block when restoring a saved state
+    double hostBpm = -1;
+    if (tempoId >= 0 && tempoSrcPtr && tempoSrcPtr->load() > 0.5) {
+      if (auto* ph = getPlayHead()) if (auto pos = ph->getPosition()) if (auto bpm = pos->getBpm()) if (*bpm > 0) hostBpm = std::round(*bpm * 100.0) / 100.0;
+      if (hostBpm > 0) hostBpm = std::max(info.specs[(size_t)tempoId].min, std::min(info.specs[(size_t)tempoId].max, hostBpm));
+    }
     bool presetChanged = false; double pv = ptrs[0]->load();
     if (force || pv != sent[0]) { engine->set(0, pv); sent[0] = pv; presetChanged = true; }
     for (int i = 1; i < n; ++i) {
-      double x = ptrs[i]->load();
+      if (!ptrs[i]) continue;   // hidden parameter: the engine keeps its own value
+      double x = ptrs[i]->load(); if (i == tempoId && hostBpm > 0) x = hostBpm;
       if (force || (presetChanged && suppressWrites.load() > 0) || x != sent[i]) { engine->set(i, x); sent[i] = x; }
     }
   }
@@ -134,17 +146,18 @@ private:
     int q = (int)std::lround(qualityPtr->load()); factorQuality = quality = q; int f = q == 0 ? 1 : (q == 1 ? 2 : 4);
     auto e = info.make(hostRate * f); std::unique_ptr<juce::dsp::Oversampling<float>> o; juce::AudioBuffer<float> zb;
     if (f > 1) { o.reset(new juce::dsp::Oversampling<float>(2, f == 2 ? 1 : 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, true)); o->initProcessing((size_t)std::max(maxBlock, 4096)); zb.setSize(2, std::max(maxBlock, 4096)); zb.clear(); }
-    for (size_t i = 1; i < info.specs.size(); ++i) e->set((int)i, ptrs[i]->load()); e->set(0, ptrs[0]->load());
-    for (size_t i = 1; i < info.specs.size(); ++i) e->set((int)i, ptrs[i]->load());
+    for (size_t i = 1; i < info.specs.size(); ++i) if (ptrs[i]) e->set((int)i, ptrs[i]->load());
+    e->set(0, ptrs[0]->load());
+    for (size_t i = 1; i < info.specs.size(); ++i) if (ptrs[i]) e->set((int)i, ptrs[i]->load());
     e->writes.clear();
     { juce::SpinLock::ScopedLockType lk(engineLock); engine = std::move(e); os = std::move(o); zeroBuf = std::move(zb); factor = f; sent.assign(info.specs.size(), std::numeric_limits<double>::quiet_NaN());
-      for (size_t i = 0; i < info.specs.size(); ++i) sent[i] = ptrs[i]->load(); held.reset(); down.reset(); sustain = false; }
+      for (size_t i = 0; i < info.specs.size(); ++i) sent[i] = ptrs[i] ? ptrs[i]->load() : info.specs[i].def; held.reset(); down.reset(); sustain = false; }
     setLatencySamples(os ? (int)std::lround(os->getLatencyInSamples()) : 0);
     (void)initial;
   }
 
   std::unique_ptr<occ::EngineBase> engine; std::unique_ptr<juce::dsp::Oversampling<float>> os; juce::AudioBuffer<float> zeroBuf; juce::SpinLock engineLock;
-  std::vector<std::atomic<float>*> ptrs; std::atomic<float>* qualityPtr = nullptr; std::vector<double> sent;
+  std::vector<std::atomic<float>*> ptrs; std::atomic<float>* qualityPtr = nullptr, *tempoSrcPtr = nullptr; std::vector<double> sent;
   double hostRate = 48000; int maxBlock = 512, factor = 1, quality = 1, factorQuality = 1; bool sustain = false; std::bitset<128> held, down;
   std::atomic<bool> forceAll{false}; std::atomic<int> suppressWrites{0};
   std::array<std::pair<int, double>, 256> fifo; std::atomic<int> rd{0}, wr{0};

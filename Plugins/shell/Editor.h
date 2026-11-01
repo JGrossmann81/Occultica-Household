@@ -45,13 +45,17 @@ public:
           c->slider->setDoubleClickReturnValue(true, s.def); c->att = std::make_unique<juce::SliderParameterAttachment>(*proc.apvts.getParameter(OccProcessor::pid(id)), *c->slider); addAndMakeVisible(*c->slider);
           c->value = std::make_unique<juce::Label>(); c->value->setJustificationType(juce::Justification::centred); c->value->setFont(juce::Font(juce::FontOptions(12.f))); c->value->setColour(juce::Label::textColourId, juce::Colour(th.glow)); c->value->setInterceptsMouseClicks(false, false); addAndMakeVisible(*c->value);
           Slider* sl = c->slider.get(); Label* lb = c->value.get(); sl->onValueChange = [sl, lb, &s] { lb->setText(juce::String(occ::formatValue(s, sl->getValue())), juce::dontSendNotification); }; sl->onValueChange(); }
-        pn.ctls.push_back(std::move(c)); }
+        pn.ctls.push_back(std::move(c));
+        if (id == proc.tempoId) {   // host-sync switch right next to the instrument's own Tempo
+          auto t = std::make_unique<Ctl>(); t->id = -1; t->box = std::make_unique<juce::ComboBox>(); t->box->addItem("Own", 1); t->box->addItem("Host", 2);
+          t->boxAtt = std::make_unique<juce::ComboBoxParameterAttachment>(*proc.apvts.getParameter("tempoSrc"), *t->box); t->box->setTooltip("Own: use the Tempo knob. Host: follow the tempo of your music program."); addAndMakeVisible(*t->box); pn.ctls.push_back(std::move(t));
+        } }
       panels.push_back(std::move(pn));
     }
     qualityBox.addItemList({"Standard", "High (2x)", "Ultra (4x)"}, 1); addAndMakeVisible(qualityBox);
     qualityAtt = std::make_unique<juce::ComboBoxParameterAttachment>(*proc.apvts.getParameter("quality"), qualityBox);
     keys.setKeyWidth(22.f); keys.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, juce::Colour(th.accent).withAlpha(0.7f)); keys.setLowestVisibleKey(36); addAndMakeVisible(keys);
-    computeLayout(); startTimerHz(30);
+    computeLayout(); refreshLabels(); startTimerHz(30);
   }
   ~OccEditor() override { setLookAndFeel(nullptr); }
 
@@ -69,7 +73,7 @@ public:
     for (auto& pn : panels) {
       g.setColour(juce::Colours::black.withAlpha(0.32f)); g.fillRoundedRectangle(pn.r, 10.f); g.setColour(juce::Colour(th.accent).withAlpha(0.28f)); g.drawRoundedRectangle(pn.r, 10.f, 1.f);
       g.setColour(juce::Colour(th.accent)); g.setFont(juce::Font(juce::FontOptions(13.f, juce::Font::bold))); g.drawText(juce::String(pn.name).toUpperCase(), (int)pn.r.getX() + 12, (int)pn.r.getY() + 6, (int)pn.r.getWidth() - 20, 20, juce::Justification::centredLeft);
-      for (auto& c : pn.ctls) { g.setColour(juce::Colour(th.ink).withAlpha(0.85f)); g.setFont(juce::Font(juce::FontOptions(12.f))); g.drawFittedText(proc.info.specs[(size_t)c->id].name, c->labelR, juce::Justification::centred, 2, 1.0f); }
+      for (auto& c : pn.ctls) { g.setColour(juce::Colour(th.ink).withAlpha(0.85f)); g.setFont(juce::Font(juce::FontOptions(12.f))); const bool unused = ctlLabel(*c) == "-"; g.setColour(juce::Colour(th.ink).withAlpha(unused ? 0.3f : 0.85f)); g.drawFittedText(unused ? juce::String("(unused)") : ctlLabel(*c), c->labelR, juce::Justification::centred, 2, 1.0f); }
     }
     g.setColour(juce::Colour(th.ink).withAlpha(0.55f)); g.setFont(juce::Font(juce::FontOptions(12.f))); g.drawText("Sound quality", footerR.withWidth(100.f).toNearestInt(), juce::Justification::centredRight);
   }
@@ -79,6 +83,14 @@ private:
   using Slider = juce::Slider; using Label = juce::Label;
   struct Ctl { int id = 0; std::unique_ptr<juce::Slider> slider; std::unique_ptr<juce::ComboBox> box; std::unique_ptr<juce::Label> value; std::unique_ptr<juce::SliderParameterAttachment> att; std::unique_ptr<juce::ComboBoxParameterAttachment> boxAtt; juce::Rectangle<int> labelR; };
   struct Panel { juce::String name; std::vector<std::unique_ptr<Ctl>> ctls; juce::Rectangle<float> r; };
+  juce::String ctlLabel(const Ctl& c) const {   // control name; instruments with per-preset meanings (Avoidica macro knobs) supply their own via Info::dynLabel
+    if (c.id < 0) return "Tempo source";
+    if (proc.info.dynLabel) { auto s = proc.info.dynLabel(c.id, (int)std::lround(proc.apvts.getRawParameterValue(OccProcessor::pid(0))->load())); if (!s.empty()) return juce::String(s); }
+    return juce::String(proc.info.specs[(size_t)c.id].name);
+  }
+  void refreshLabels() {
+    for (auto& pn : panels) for (auto& c : pn.ctls) if (c->slider) { const bool unused = ctlLabel(*c) == "-"; c->slider->setEnabled(!unused); c->slider->setAlpha(unused ? 0.3f : 1.f); c->value->setAlpha(unused ? 0.3f : 1.f); }
+  }
   void fillBox(juce::ComboBox& b, const occ::Spec& s) { for (size_t i = 0; i < s.labels.size(); ++i) b.addItem(juce::String(s.labels[i]), (int)i + 1); }
   void addControl(int id, juce::ComboBox& box, bool) { fillBox(box, proc.info.specs[(size_t)id]); presetAtt = std::make_unique<juce::ComboBoxParameterAttachment>(*proc.apvts.getParameter(OccProcessor::pid(id)), box); addAndMakeVisible(box); }
   void computeLayout() {
@@ -100,8 +112,12 @@ private:
     presetBox.setBounds(70, headerH - 30, 230, 24); qualityBox.setBounds(M + 108, bottom, 140, 24);
     keys.setBounds(M, bottom + 34, W - 2 * M, 64); setSize(W, bottom + 34 + 64 + 14);
   }
-  void timerCallback() override { tsec += 1.f / 30.f; repaint(0, 0, getWidth(), headerH); }
+  void timerCallback() override {
+    tsec += 1.f / 30.f;
+    if (proc.info.dynLabel) { int p = (int)std::lround(proc.apvts.getRawParameterValue(OccProcessor::pid(0))->load()); if (p != lastPreset) { lastPreset = p; refreshLabels(); repaint(); } }
+    repaint(0, 0, getWidth(), headerH);
+  }
   OccProcessor& proc; const occ::Theme& th; OccLookAndFeel lnf; std::vector<Panel> panels; juce::ComboBox presetBox, qualityBox; std::unique_ptr<juce::ComboBoxParameterAttachment> presetAtt, qualityAtt;
-  juce::MidiKeyboardComponent keys; int headerH = 128; float tsec = 0; juce::Rectangle<float> footerR;
+  juce::MidiKeyboardComponent keys; int headerH = 128, lastPreset = -1; float tsec = 0; juce::Rectangle<float> footerR;
 };
 inline juce::AudioProcessorEditor* OccProcessor::createEditor() { return new OccEditor(*this); }
