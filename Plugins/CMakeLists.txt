@@ -42,6 +42,11 @@ occ_plugin(brassica Brassica Brsc)
 occ_plugin(clavica  Clavica  Clvc)
 occ_plugin(stringica Stringica Strn)
 occ_plugin(pipica   Pipica   Pipc)
+occ_plugin(percussica Percussica Prcs)
+occ_plugin(beachica Beachica Bchc)
+occ_plugin(avoidica Avoidica Avdc)
+occ_plugin(industrica Industrica Indc)
+occ_plugin(physica Physica Phyc)
 
 # Test tool: renders each editor to PNG and plays notes through every processor (used by the build).
 juce_add_console_app(snapshot PRODUCT_NAME "snapshot")
