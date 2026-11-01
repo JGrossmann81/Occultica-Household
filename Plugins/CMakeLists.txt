@@ -9,6 +9,10 @@ FetchContent_MakeAvailable(JUCE)
 
 # One plugin per instrument. Add a line here when an instrument is ported (and add its header to engines/all.h).
 function(occ_plugin id Name Code)
+  set(eng "${ARGV3}")
+  if(eng STREQUAL "")
+    set(eng "${id}")
+  endif()
   juce_add_plugin(${id}
     PRODUCT_NAME "${Name}"
     COMPANY_NAME "Occultica"
@@ -20,7 +24,7 @@ function(occ_plugin id Name Code)
     VST3_CATEGORIES Instrument Synth
     COPY_PLUGIN_AFTER_BUILD FALSE)
   target_sources(${id} PRIVATE shell/Entry.cpp)
-  target_compile_definitions(${id} PRIVATE OCC_ID="${id}" JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_DISPLAY_SPLASH_SCREEN=0 JUCE_REPORT_APP_USAGE=0)
+  target_compile_definitions(${id} PRIVATE OCC_ID="${eng}" JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_DISPLAY_SPLASH_SCREEN=0 JUCE_REPORT_APP_USAGE=0)
   target_link_libraries(${id} PRIVATE juce::juce_audio_utils juce::juce_dsp juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
   if(MSVC)
     target_compile_options(${id} PRIVATE /O2)
@@ -55,3 +59,7 @@ juce_add_console_app(snapshot PRODUCT_NAME "snapshot")
 target_sources(snapshot PRIVATE tests/Snapshot.cpp)
 target_compile_definitions(snapshot PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_USE_WINDOWS_MEDIA_FORMAT=0 JUCE_MODAL_LOOPS_PERMITTED=1)
 target_link_libraries(snapshot PRIVATE juce::juce_audio_utils juce::juce_dsp juce::juce_recommended_config_flags)
+# Revision-2 builds of instruments that already existed as older plugins: separate plugin identity, same engine.
+occ_plugin(minicarev2  "Minica Rev2"  Mnc2 minica)
+occ_plugin(rhodicarev2 "Rhodica Rev2" Rhd2 rhodica)
+occ_plugin(fanticarev2 "Fantica Rev2" Fnt2 fantica)
