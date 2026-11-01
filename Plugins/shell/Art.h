@@ -63,12 +63,42 @@ inline void drawWraithica(Graphics& g, Rectangle<float> r, const occ::Theme& th,
   juce::Random rnd(5); for (int i = 0; i < 18; ++i) { float x = r.getX() + rnd.nextFloat() * r.getWidth(), y = r.getY() + std::fmod(rnd.nextFloat() * r.getHeight() - t * (6 + i), r.getHeight()); if (y < r.getY()) y += r.getHeight();
     g.setColour(C(th.glow).withAlpha(0.15f + 0.4f * rnd.nextFloat())); g.fillEllipse(x, y, 2.5f, 2.5f); }
 }
+inline void drawAdditica(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
+  g.setGradientFill(juce::ColourGradient(C(0xff10303f), r.getCentreX(), r.getBottom(), C(0xff03080d), r.getCentreX(), r.getY(), false)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
+  g.setColour(C(th.accent).withAlpha(0.3f)); g.drawRoundedRectangle(r.reduced(2, 2), 8.f, 1.2f);
+  const int N = 32; float base = r.getBottom() - 12, bw = (r.getWidth() - 40) / N;
+  for (int i = 0; i < N; ++i) { float h = (r.getHeight() - 30) * (1.f / (1 + i * 0.35f)) * (0.55f + 0.45f * std::sin(t * (1.3f + i * 0.17f) + i)) * (0.5f + level * 1.6f); h = std::min(h, r.getHeight() - 26);
+    auto b = Rectangle<float>(r.getX() + 20 + i * bw + 1, base - h, bw - 2, h); g.setColour(C(th.accent).withAlpha(0.18f)); g.fillRect(b.expanded(2, 2));
+    g.setGradientFill(juce::ColourGradient(C(th.glow), b.getX(), b.getY(), C(th.accent).darker(0.6f), b.getX(), b.getBottom(), false)); g.fillRect(b); }
+  Path sum; for (int i = 0; i <= 160; ++i) { float u = i / 160.f, y = r.getCentreY() - 6; for (int k = 1; k <= 5; ++k) y += std::sin(u * 6.28f * k * 2 + t * 2) / k * (6.f + level * 24.f); float x = r.getX() + 20 + (r.getWidth() - 40) * u; if (i == 0) sum.startNewSubPath(x, y); else sum.lineTo(x, y); }
+  g.setColour(C(0xffffffff).withAlpha(0.8f)); g.strokePath(sum, juce::PathStrokeType(1.4f));
+}
+inline void drawGrainica(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
+  g.setGradientFill(juce::ColourGradient(C(0xff233318), r.getCentreX(), r.getBottom(), C(0xff070b04), r.getCentreX(), r.getY(), false)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
+  g.setColour(C(th.accent).withAlpha(0.3f)); g.drawRoundedRectangle(r.reduced(2, 2), 8.f, 1.2f);
+  // a sample waveform strip with a scanning playhead; grains scatter around it
+  Path w; float cy = r.getBottom() - 26; for (int i = 0; i <= 200; ++i) { float u = i / 200.f, a = 9.f * std::sin(u * 37.f) * std::sin(u * 5.f + 1.f) + 5.f * std::sin(u * 91.f); float x = r.getX() + 14 + (r.getWidth() - 28) * u; if (i == 0) w.startNewSubPath(x, cy + a); else w.lineTo(x, cy + a); }
+  g.setColour(C(th.ink).withAlpha(0.55f)); g.strokePath(w, juce::PathStrokeType(1.3f));
+  float head = r.getX() + 14 + (r.getWidth() - 28) * std::fmod(t * 0.12f, 1.f); g.setColour(C(th.glow)); g.drawLine(head, cy - 16, head, cy + 16, 1.6f);
+  juce::Random rnd(11); int n = 46; for (int i = 0; i < n; ++i) { float ph = std::fmod(t * (0.35f + rnd.nextFloat() * 0.5f) + rnd.nextFloat(), 1.f); float x = head + (rnd.nextFloat() - 0.5f) * (60.f + level * 220.f), y = cy - 14 - ph * (r.getHeight() - 50); float sz = 3.f + rnd.nextFloat() * 9.f * (1.f - ph);
+    g.setColour(C(th.accent).withAlpha((1.f - ph) * 0.6f)); g.fillEllipse(x - sz * 0.5f, y - sz * 0.5f, sz, sz); g.setColour(C(th.glow).withAlpha((1.f - ph) * 0.8f)); g.drawEllipse(x - sz * 0.5f, y - sz * 0.5f, sz, sz, 0.8f); }
+}
+inline void drawFantica(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
+  g.setGradientFill(juce::ColourGradient(C(0xff3a1a37), r.getCentreX(), r.getBottom(), C(0xff0a040a), r.getCentreX(), r.getY(), false)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
+  g.setColour(C(th.accent).withAlpha(0.3f)); g.drawRoundedRectangle(r.reduced(2, 2), 8.f, 1.2f);
+  // rack-style stack of wavetable scopes above a row of pads
+  for (int k = 0; k < 4; ++k) { auto sc = Rectangle<float>(r.getX() + 16 + k * (r.getWidth() - 32) / 4.f, r.getY() + 10, (r.getWidth() - 32) / 4.f - 8, r.getHeight() * 0.5f);
+    g.setColour(C(0xff000000).withAlpha(0.5f)); g.fillRoundedRectangle(sc, 4.f); Path p; for (int i = 0; i <= 80; ++i) { float u = i / 80.f, y = sc.getCentreY(); for (int h = 1; h <= 3 + k * 2; ++h) y += std::sin(u * 6.28f * h + t * (1 + k * 0.3f)) / h * sc.getHeight() * 0.25f * (0.4f + level * 2.f); float x = sc.getX() + 4 + (sc.getWidth() - 8) * u; if (i == 0) p.startNewSubPath(x, y); else p.lineTo(x, y); }
+    g.setColour(C(th.accent).withAlpha(0.85f)); g.strokePath(p, juce::PathStrokeType(1.3f)); }
+  for (int i = 0; i < 8; ++i) { auto pad = Rectangle<float>(r.getX() + 16 + i * (r.getWidth() - 32) / 8.f, r.getBottom() - 36, (r.getWidth() - 32) / 8.f - 6, 22); float on = 0.25f + 0.6f * std::max(0.f, std::sin(t * 2.f - i * 0.8f)) * (0.3f + level * 2.f);
+    g.setColour(C(th.accent).withAlpha(std::min(1.f, on))); g.fillRoundedRectangle(pad, 4.f); g.setColour(C(th.glow).withAlpha(0.5f)); g.drawRoundedRectangle(pad, 4.f, 1.f); }
+}
 inline void drawGeneric(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
   g.setColour(C(0xff000000).withAlpha(0.35f)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
   for (int k = 0; k < 3; ++k) { Path p; for (int i = 0; i <= 200; ++i) { float x = r.getX() + 10 + (r.getWidth() - 20) * i / 200.f, y = r.getCentreY() + std::sin(i * 0.12f * (k + 1) + t * (2 + k)) * r.getHeight() * 0.28f * (0.3f + level * 2.f) / (k + 1); if (i == 0) p.startNewSubPath(x, y); else p.lineTo(x, y); }
     g.setColour(C(th.accent).withAlpha(0.7f / (k + 1))); g.strokePath(p, juce::PathStrokeType(1.6f)); }
 }
 inline void drawMotif(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
-  if (th.motif == "minica") drawMinica(g, r, th, level, t); else if (th.motif == "rhodica") drawRhodica(g, r, th, level, t); else if (th.motif == "wraithica") drawWraithica(g, r, th, level, t); else drawGeneric(g, r, th, level, t);
+  if (th.motif == "minica") drawMinica(g, r, th, level, t); else if (th.motif == "rhodica") drawRhodica(g, r, th, level, t); else if (th.motif == "wraithica") drawWraithica(g, r, th, level, t); else if (th.motif == "additica") drawAdditica(g, r, th, level, t); else if (th.motif == "grainica") drawGrainica(g, r, th, level, t); else if (th.motif == "fantica") drawFantica(g, r, th, level, t); else drawGeneric(g, r, th, level, t);
 }
 }  // namespace occart

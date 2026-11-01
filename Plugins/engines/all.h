@@ -2,4 +2,7 @@
 #include "minica.h"
 #include "rhodica.h"
 #include "wraithica.h"
-namespace occ { inline std::vector<Info> allInstruments() { return {minica::info(), rhodica::info(), wraithica::info()}; } }
+#include "additica.h"
+#include "grainica.h"
+#include "fantica.h"
+namespace occ { inline std::vector<Info> allInstruments() { return {minica::info(), rhodica::info(), wraithica::info(), additica::info(), grainica::info(), fantica::info()}; } }
