@@ -217,10 +217,44 @@
     const d = e.target.dataset; if (!d || !d.pr) return;
     if (d.pr === 'find') printerFind();
     else if (d.pr === 'copy') { try { await navigator.clipboard.writeText(d.ip); e.target.textContent = 'Copied'; } catch (er) { e.target.textContent = d.ip; } }
-    else if (d.pr === 'save') { lsSet('3dp-ip', d.ip); e.target.textContent = 'Saved'; }
+    else if (d.pr === 'save') { lsSet('3dp-ip', d.ip); e.target.textContent = 'Saved'; shop('/shop/config', { printer_ip: d.ip }).catch(() => { }); }
     else if (d.pr === 'check') { const ip = lsGet('3dp-ip'); try { const j = await (await fetch(HELPER + '/printer/check?ip=' + encodeURIComponent(ip))).json(); renderPrinter('', j.reachable ? { cls: 'ok', text: ip + ' answers' + (j.info && j.info.name ? ': ' + j.info.name : '') + '. It is the right address.' } : { cls: 'bad', text: ip + ' does not answer. The printer may be off or have a new address: press Find my printer.' }); } catch (er) { renderPrinter('', { cls: 'bad', text: 'The helper is not running, so I cannot check.' }); } }
   });
   renderPrinter();
+  /* ---------- slice and send ---------- */
+  let SS = { st: null, job: null, confirm: false };
+  const shop = async (path, body) => { const r = await fetch(HELPER + path, body ? { method: 'POST', body: JSON.stringify(body) } : {}); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Helper error ' + r.status); return j; };
+  async function ssLoad() { try { SS.st = await shop('/shop/status'); SS.err = ''; } catch (e) { SS.st = null; SS.err = e.message === 'Failed to fetch' ? 'The helper is not running on this computer. On the shop computer use start-shop.bat; here use start.bat.' : e.message; } ssRender(); }
+  function ssRender() {
+    const el = $('#ssbox'); if (!el) return; const st = SS.st, ip = lsGet('3dp-ip') || (st && st.printer_ip) || '';
+    if (!st) { el.innerHTML = `<p class="xs bad">${esc(SS.err || 'Looking for the helper...')}</p><p class="xs mu">Slicing happens on the computer that has ElegooSlicer installed. Install the helper there (photo3d.zip, then setup.bat, then start-shop.bat).</p>`; return; }
+    const sel = k => { const cur = (st.profile || {})[k] || (st.presets[k] || [])[0] || ''; return `<div class="row"><label class="lb">${k === 'machine' ? 'Printer' : k === 'process' ? 'Quality profile' : 'Filament'}</label><select data-ss="${k}">${(st.presets[k] || []).map(n => `<option ${n === cur ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>`; };
+    const where = st.remote ? `Slicing on the shop computer (${esc(st.remote)}).` : `Slicing on this computer (${esc(st.host || '')}).`;
+    el.innerHTML = `<p class="xs ${st.exe_found || st.remote ? 'ok' : 'bad'}">${where} ${st.remote ? '' : st.exe_found ? 'Slicer found.' : 'No ElegooSlicer was found on this computer.'}</p>
+${(st.presets.machine || []).length ? sel('machine') + sel('process') + sel('filament') : '<p class="xs mu">No saved slicer settings found. Open ElegooSlicer once, choose the Centauri Carbon, then reopen this.</p>'}
+<div class="row"><label class="lb">Printer address</label><input type="text" id="ssip" value="${esc(ip)}" placeholder="use Find my printer above"></div>
+<div class="row"><button data-ss-go="slice">Slice only</button><button data-ss-go="send" class="ok">Slice and send</button><button data-ss-go="${SS.confirm ? 'start-yes' : 'start'}" class="${SS.confirm ? 'bad' : ''}">${SS.confirm ? 'Yes: bed is clear, START printing' : 'Slice, send and start'}</button></div>
+<div id="p3bar"><i id="ssbar"></i></div><p class="xs" id="ssmsg"></p><p id="ssdl"></p>
+<details class="xs mu"><summary>Slicing on another computer?</summary><p>If ElegooSlicer is on your shop computer: run start-shop.bat there, note its PIN, then enter its address and PIN here. This computer will send the model over to be sliced and printed.</p><div class="row"><input type="text" id="ssremote" placeholder="http://192.168.1.50:8788" value="${esc(st.remote || '')}"><input type="text" id="sspin" placeholder="PIN"><button data-ss-go="remote">Save</button></div></details>`;
+  }
+  async function stlB64() { const buf = await G.stl(tris, cur.name).arrayBuffer(), u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
+  async function ssGo(mode) {
+    const msg = $('#ssmsg'), bar = $('#ssbar'), dl = $('#ssdl'); dl.innerHTML = ''; SS.confirm = false;
+    if (!tris) { msg.className = 'xs bad'; msg.textContent = 'Make or open a model first.'; return; }
+    const ip = $('#ssip').value.trim(), prof = {}; document.querySelectorAll('[data-ss]').forEach(e => { prof[e.dataset.ss] = e.value; });
+    try { await shop('/shop/config', { profile: prof }); if (ip) { lsSet('3dp-ip', ip); await shop('/shop/config', { printer_ip: ip }); }
+      const j = await shop('/shop/slice', { stl: await stlB64(), name: cur.id, profile: prof, ip, send: mode !== 'slice', start: mode === 'start-yes', leveling: true });
+      for (;;) { await new Promise(r => setTimeout(r, 700)); const s = await shop('/shop/job?id=' + j.id); bar.style.width = (s.pct || 0) + '%'; msg.className = 'xs ' + (s.error ? 'bad' : s.done ? 'ok' : 'mu'); msg.textContent = s.msg || '';
+        if (s.done) { if (!s.error && s.pct >= 40) dl.innerHTML = `<a href="#" data-ss-gcode="${j.id}">Download the G-code</a>`; break; } }
+    } catch (e) { msg.className = 'xs bad'; msg.textContent = e.message === 'Failed to fetch' ? 'Lost contact with the helper.' : e.message; }
+  }
+  document.addEventListener('click', async e => {
+    const t = e.target, d = t.dataset || {};
+    if (d.ssGo) { e.preventDefault(); if (d.ssGo === 'start') { SS.confirm = true; ssRender(); return; } if (d.ssGo === 'remote') { try { await shop('/shop/config', { remote: $('#ssremote').value.trim(), remote_pin: $('#sspin').value.trim() }); await ssLoad(); } catch (er) { $('#ssmsg') && ($('#ssmsg').textContent = er.message); } return; } ssGo(d.ssGo); }
+    else if (d.ssGcode) { e.preventDefault(); const r = await fetch(HELPER + '/shop/gcode?id=' + d.ssGcode); save(await r.blob(), '3DPrintica_' + cur.id + '.gcode'); }
+  });
+  document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.ss) shop('/shop/config', { profile: Object.fromEntries([...document.querySelectorAll('[data-ss]')].map(x => [x.dataset.ss, x.value])) }).catch(() => { }); });
+  $('#ss') && $('#ss').addEventListener('toggle', () => { if ($('#ss').open) ssLoad(); });
   function loadDemo() { const c = document.createElement('canvas'); c.width = 300; c.height = 300; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 300, 300); x.fillStyle = '#000'; x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 60 : 130; x.lineTo(150 + r * Math.cos(a), 160 + r * Math.sin(a)); } x.closePath(); x.fill(); const im = new Image(); im.onload = () => { src.img = im; if (cur.inputs.includes('source')) P.mode = 'image'; renderControls(); regen(); }; im.src = c.toDataURL(); }
   $('#printer').innerHTML = PRINTERS.map(p => `<option value="${p.id}" ${p.id === printer.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   window.P3 = { GEN, setGen, get tris() { return tris; }, get P() { return P; }, src, loadDemo, G };
