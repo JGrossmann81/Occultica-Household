@@ -17,7 +17,7 @@ jobs:
         run: |
           g++ -O2 -std=c++17 -o render render.cpp
           fail=0
-          for p in "minica 9" "minica 0" "minica 2" "minica 4" "rhodica 8" "rhodica 4" "rhodica 3"; do
+          for p in "minica 9" "minica 0" "minica 2" "minica 4" "rhodica 8" "rhodica 4" "rhodica 3" "wraithica 0" "wraithica 3" "wraithica 6" "wraithica 9"; do
             set -- $p; ./render $1 $2 c.f32; node render.js $1 $2 j.f32
             python3 compare.py c.f32 j.f32 | tee out.txt
             python3 - <<'PY' || fail=1
@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S Plugins -B build -G "Visual Studio 17 2022" -A x64
+        run: cmake -S Plugins -B build -A x64
       - name: Build
         run: cmake --build build --config Release --parallel 4
       - name: Collect

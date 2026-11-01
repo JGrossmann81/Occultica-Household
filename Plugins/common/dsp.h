@@ -85,4 +85,17 @@ struct Chorus {
     L += (wl - L) * mix * 0.7; R += (wr - R) * mix * 0.7; ++w;
   }
 };
+struct DelayLine {
+  std::vector<float> buf; long mask, w = 0;
+  explicit DelayLine(long maxFrames = 16) { long n = 1; while (n < maxFrames + 4) n <<= 1; buf.assign((size_t)n, 0.f); mask = n - 1; }
+  void clear() { std::fill(buf.begin(), buf.end(), 0.f); }
+  void push(double x) { buf[(size_t)(w & mask)] = (float)x; ++w; }
+  double tap(long d) const { return buf[(size_t)((w - 1 - d) & mask)]; }
+  double read(double d) const {
+    d = std::min(std::max(d, 2.0), double(mask - 3)); long i = (long)std::floor(d); double t = d - double(i);
+    double y0 = tap(i - 2), y1 = tap(i - 1), y2 = tap(i), y3 = tap(i + 1);
+    double c0 = y1, c1 = 0.5 * (y2 - y0), c2 = y0 - 2.5 * y1 + 2 * y2 - 0.5 * y3, c3 = 0.5 * (y3 - y0) + 1.5 * (y1 - y2);
+    return ((c3 * t + c2) * t + c1) * t + c0;
+  }
+};
 }  // namespace occ

@@ -31,3 +31,4 @@ endfunction()
 
 occ_plugin(minica   Minica   Mnca)
 occ_plugin(rhodica  Rhodica  Rhdc)
+occ_plugin(wraithica Wraithica Wrth)
