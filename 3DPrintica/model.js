@@ -1,4 +1,4 @@
-/* 3DPrintida model reader: STL (binary and text), OBJ and GLB/glTF to a flat triangle array [x,y,z,...] in the file's own units and axes. */
+/* 3DPrintica model reader: STL (binary and text), OBJ and GLB/glTF to a flat triangle array [x,y,z,...] in the file's own units and axes. */
 (function () {
   const M = {};
   const sv = t => { let v = 0; for (let i = 0; i < t.length; i += 9) v += (t[i] * (t[i + 4] * t[i + 8] - t[i + 5] * t[i + 7]) - t[i + 1] * (t[i + 3] * t[i + 8] - t[i + 5] * t[i + 6]) + t[i + 2] * (t[i + 3] * t[i + 7] - t[i + 4] * t[i + 6])) / 6; return v; };

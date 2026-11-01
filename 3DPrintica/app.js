@@ -1,4 +1,4 @@
-/* 3DPrintida: make printable parts (STL / 3MF) from photos, text and parameters, check them against your printer, drop them into ElegooSlicer. */
+/* 3DPrintica: make printable parts (STL / 3MF) from photos, text and parameters, check them against your printer, drop them into ElegooSlicer. */
 (function () {
   const G = window.G3, $ = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const PRINTERS = [
@@ -7,7 +7,7 @@
     { id: 'm5', name: 'Elegoo Mars 5 Ultra (resin)', bed: [153, 77, 165], resin: true }, { id: 'x', name: 'Other (256 x 256 x 256)', bed: [256, 256, 256] }
   ];
   let printer = PRINTERS[0]; try { printer = PRINTERS.find(p => p.id === localStorage.getItem('3dp-printer')) || printer; } catch (e) { }
-  const src = { model: null, p3file: null, img: null, text: 'HAUNTED', font: 'bold Xpx sans-serif', thr: 0, invert: false, smooth: 1, ring: 'top', ringOd: 12, ringId: 4.5 };
+  const src = { model: null, views: {}, img: null, text: 'HAUNTED', font: 'bold Xpx sans-serif', thr: 0, invert: false, smooth: 1, ring: 'top', ringOd: 12, ringId: 4.5 };
   /* ---------- mask from photo or text ---------- */
   function textCanvas() {
     const lines = String(src.text || ' ').split('\n'), fs = 200, big = document.createElement('canvas'), bx = big.getContext('2d'), font = src.font.replace('Xpx', fs + 'px');
@@ -57,6 +57,7 @@
     if (p.base) G.tube(t, 0, 0, Math.max(mx[0] - mn[0], mx[1] - mn[1]) * k / 2 * 1.05 + 3, 0, 0, 3, 72);
     return null;
   }
+  const ENGINES = [['hy2', 'Hunyuan3D 2 (best quality)'], ['hy2turbo', 'Hunyuan3D 2 Turbo (fast)'], ['hy2mini', 'Hunyuan3D 2 mini (light)'], ['hy2mv', 'Hunyuan3D 2 multi-view (2 to 4 photos)'], ['triposr', 'TripoSR (fast, MIT licence)']];
   const GEN = [
     { id: 'cutout', name: 'Photo or text to flat shape', desc: 'Turns the dark shape in a photo (or your text) into a solid, flat shape: keychains, signs, ornaments, badges.', inputs: ['source'], params: [N('w', 'Width', 60, 15, 250, 1), N('t', 'Thickness', 3, .8, 20, .2)].concat(ringParams),
       build(p, t) { let mk = makeMask(p.w, p.mode, .3); if (!mk) return 'Choose a photo or type some text.'; mk = withRing(mk, p); G.maskPrism(t, mk.m, mk.W, mk.H, mk.px, 0, p.t); return null; }, notes: 'Print flat. 0.2 mm layers, 3 walls, 20% infill. No supports needed.' },
@@ -83,7 +84,7 @@
         const r = OCC.build(p.who, p.size, p.base, t); if (r.thin > 0) window.__occThin = r.thin; else window.__occThin = 0; return null; }, notes: 'Print standing on its base, 0.12 to 0.16 mm layers. Use tree supports: arms, weapons, wings and floating parts hang in the air. Very thin blades and spikes may be fragile at small sizes. The volume figure counts overlapping pieces twice, so real filament use is lower.' },
 
     { id: 'model', name: 'Import a 3D model', desc: 'Open an STL, OBJ or GLB file (from Thingiverse, Printables, a game, or an AI tool), turn it upright, set the size, add a base, and save a print-ready 3MF.', inputs: ['model'], params: modelParams('y'), build: modelBuild, notes: 'Check the preview: if it is on its side or upside down, change "Which way is up". Use tree supports for anything that hangs in the air. 0.12 to 0.2 mm layers.' },
-    { id: 'photo3d', name: 'Photo to 3D', desc: 'Drop in one photo and your own PC makes a 3D model of it with the free TripoSR AI. Needs the small helper program running on your PC (see below). Best with one subject on a plain background.', inputs: ['photo3d'], params: [SEL('res', 'Detail', '320', [['256', 'Normal (fast)'], ['320', 'Fine'], ['384', 'Finer (slower)'], ['512', 'Maximum (needs lots of video memory)']]), CHK('rembg', 'Remove the background automatically', true)].concat(modelParams('z')), build: modelBuild, notes: 'AI models are smooth but soft: expect rounded details and a guessed back side. Use the base, tree supports and 0.12 mm layers. Faces and hands print best at 100 mm or larger.' }
+    { id: 'photo3d', name: 'Photo to 3D', desc: 'Turn photos into a 3D model on your own PC with free AI (Hunyuan3D 2 or TripoSR). Needs the helper program running (see below). One photo works; extra photos from other sides make a much better back.', inputs: ['photo3d'], params: [SEL('engine', 'AI engine', 'hy2', ENGINES), SEL('quality', 'Quality', 'high', [['draft', 'Draft (fastest)'], ['good', 'Good'], ['high', 'High'], ['max', 'Maximum (slowest)']]), N('smooth', 'Smooth the surface', 2, 0, 3, 1, ''), CHK('rembg', 'Cut the subject out of the background', true)].concat(modelParams('y')), build: modelBuild, notes: 'AI models guess the parts the camera cannot see, so check the back in the preview. Use the base, tree supports and 0.12 mm layers. Fine detail such as hair strands, text and thin wires will be soft.' }
   ];
   const rect = (W, H) => new Uint8Array(W * H).fill(1);
   function ringTab(pl, p) { const px = pl.px, ro = Math.round(p.ringOd / 2 / px), ri = Math.round(p.ringId / 2 / px); let top = pl.H; for (let y = 0; y < pl.H; y++) { for (let x = 0; x < pl.W; x++) if (pl.m[y * pl.W + x] >= 0) { top = y; break; } break; } const extra = ro * 2 + 2, q = pad({ m: rect(pl.W, pl.H), W: pl.W, H: pl.H, px }, extra, 0, 0, 0), cx = Math.round(q.W / 2), cy = extra - Math.round(ro * .15); for (let y = 0; y < q.H; y++) for (let x = 0; x < q.W; x++) { const d2 = (x - cx) ** 2 + (y - cy) ** 2; if (d2 > ro * ro && y < extra) q.m[y * q.W + x] = 0; if (d2 <= ri * ri) q.m[y * q.W + x] = 0; } q.px = px; return q; }
@@ -99,7 +100,7 @@
     if (g.inputs.includes('source') && P.mode === 'text') h += `<div class="row"><textarea id="txt" rows="2">${esc(src.text)}</textarea></div><div class="row"><select id="fnt"><option value="bold Xpx sans-serif">Bold sans</option><option value="bold Xpx serif">Bold serif</option><option value="bold Xpx monospace">Mono</option><option value="italic bold Xpx cursive">Script</option></select></div>`;
     if (g.inputs.includes('source') && P.mode === 'image') h += `<div class="row"><label class="chk"><input type="checkbox" id="inv" ${src.invert ? 'checked' : ''}> light object on a dark background</label></div><div class="row"><span class="xs mu">Cutoff</span><input type="range" id="thr" min="0" max="250" value="${src.thr}"><span class="xs mu" id="thrv">${src.thr || 'auto'}</span></div><div class="row"><span class="xs mu">Smooth</span><input type="range" id="smo" min="0" max="3" value="${src.smooth}"></div>`;
     if (g.inputs.includes('model')) h += `<div class="row"><label class="filebtn">Choose a 3D file<input type="file" id="mdl" accept=".stl,.obj,.glb,.gltf"></label><span class="mu xs">${src.model ? esc(src.model.name) + ' loaded' : 'STL, OBJ or GLB. You can also drag a file onto this page.'}</span></div>`;
-    if (g.inputs.includes('photo3d')) h += `<div class="row"><label class="filebtn">Choose a photo<input type="file" id="p3pic" accept="image/*"></label><span class="mu xs">${src.p3file ? esc(src.p3file.name) : 'You can also drag a photo onto this page.'}</span></div><div class="row"><button class="big ok" data-p3="make">Make 3D model</button></div><p class="xs" id="p3st">Looking for the helper on this PC...</p><p class="xs mu">First time? <a href="photo3d.zip" download>Download the helper (photo3d.zip)</a>, unzip it, double-click setup.bat once, then start.bat. Needs an NVIDIA graphics card.</p>`;
+    if (g.inputs.includes('photo3d')) h += `<div class="views">${[['front', 'Front (needed)'], ['back', 'Back'], ['left', 'Left side'], ['right', 'Right side']].map(v => `<label class="view ${src.views[v[0]] ? 'has' : ''}">${src.views[v[0]] ? `<img src="${src.views[v[0]].url}" alt="">` : '<span>+</span>'}<small>${v[1]}</small><input type="file" accept="image/*" data-view="${v[0]}"></label>`).join('')}</div><div class="row"><button class="big ok" data-p3="make">Make 3D model</button></div><p class="xs" id="p3st">Looking for the helper on this PC...</p><div id="p3bar"><i></i></div><p class="xs mu" id="p3info"></p><p class="xs mu">First time? <a href="photo3d.zip" download>Download the helper (photo3d.zip)</a>, unzip it, double-click setup.bat once, then start.bat. Needs an NVIDIA graphics card. You can also drag photos onto this page.</p>`;
     h += g.params.map(q => {
       if (q.type === 'sel') return `<div class="row"><label class="lb">${esc(q.label)}</label><select data-p="${q.k}">${q.opts.map(o => `<option value="${o[0]}" ${P[q.k] === o[0] ? 'selected' : ''}>${esc(o[1])}</option>`).join('')}</select></div>`;
       if (q.type === 'chk') return `<div class="row"><label class="chk"><input type="checkbox" data-p="${q.k}" ${P[q.k] ? 'checked' : ''}> ${esc(q.label)}</label></div>`;
@@ -153,7 +154,7 @@
   function setGen(id) { cur = GEN.find(g => g.id === id); P = defaults(cur); P.mode = cur.inputs.includes('source') ? (P.mode || 'image') : 'image'; if (cur.inputs.includes('source')) P.mode = src.img ? 'image' : 'text'; if (P.ring) P.ring = P.mode === 'text' ? 'left' : 'top'; renderTabs(); renderControls(); regen(); }
   document.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
-    if (d.g) setGen(d.g); else if (d.src) { P.mode = d.src; if (P.ring && P.ring !== 'none') P.ring = d.src === 'text' ? 'left' : 'top'; renderControls(); regen(); } else if (d.dl) { if (!tris) return; save(d.dl === 'stl' ? G.stl(tris, cur.name) : G.threeMF(tris, cur.name), '3DPrintida_' + fname() + '.' + d.dl); } else if (d.demo != null) { loadDemo(); }
+    if (d.g) setGen(d.g); else if (d.src) { P.mode = d.src; if (P.ring && P.ring !== 'none') P.ring = d.src === 'text' ? 'left' : 'top'; renderControls(); regen(); } else if (d.dl) { if (!tris) return; save(d.dl === 'stl' ? G.stl(tris, cur.name) : G.threeMF(tris, cur.name), '3DPrintica_' + fname() + '.' + d.dl); } else if (d.demo != null) { loadDemo(); }
   });
   document.addEventListener('input', e => {
     const t = e.target; if (t.dataset.p) { P[t.dataset.p] = t.type === 'checkbox' ? t.checked : t.type === 'range' ? +t.value : t.value; const n = document.querySelector('[data-n="' + t.dataset.p + '"]'); if (n && t.type === 'range') n.value = t.value; regen(); } else if (t.dataset.n) { const k = t.dataset.n; P[k] = +t.value; const r = document.querySelector('[data-p="' + k + '"]'); if (r) r.value = t.value; regen(); }
@@ -171,20 +172,30 @@
     const rd = new FileReader(); rd.onload = () => { try { src.model = { t: window.MODEL.parse(rd.result, f.name), name: f.name }; if (cur.id !== 'model' && cur.id !== 'photo3d') setGen('model'); if (cur.id === 'model') P.up = /\.(stl)$/i.test(f.name) ? 'z' : 'y'; renderControls(); regen(); } catch (e) { lastErr = e.message; tris = null; if (cur.id !== 'model') setGen('model'); show(); preview.set(null); } }; rd.readAsArrayBuffer(f);
   }
   const p3msg = (m, cls) => { const e = $('#p3st'); if (e) { e.className = 'xs ' + (cls || ''); e.textContent = m; } };
+  function setView(k, f) { if (src.views[k]) URL.revokeObjectURL(src.views[k].url); src.views[k] = { file: f, url: URL.createObjectURL(f) }; if (k !== 'front' && P.engine !== 'hy2mv' && P.engine !== 'triposr') { P.engine = 'hy2mv'; } else if (k === 'front') { } renderControls(); ping(); }
   async function ping() {
-    if (cur.id !== 'photo3d') return; try { const c = new AbortController(), to = setTimeout(() => c.abort(), 1500), r = await fetch(HELPER + '/ping', { signal: c.signal }); clearTimeout(to); const j = await r.json(); if (!src.busy) p3msg(j.state === 'ready' ? 'Helper is ready (' + (String(j.device).startsWith('cuda') ? 'graphics card' : 'CPU: slow') + ').' : j.msg, j.state === 'ready' ? 'ok' : j.state === 'error' ? 'bad' : 'mu'); src.helper = j.state; } catch (e) { src.helper = null; if (!src.busy) p3msg('The helper is not running on this PC. Start it with start.bat, then reload this page.', 'bad'); }
+    if (cur.id !== 'photo3d') return;
+    try { const c = new AbortController(), to = setTimeout(() => c.abort(), 1500), r = await fetch(HELPER + '/ping', { signal: c.signal }); clearTimeout(to); const j = await r.json(); src.helper = j;
+      const bar = $('#p3bar i'); if (bar) bar.style.width = (j.state === 'busy' ? j.pct : 0) + '%';
+      if (j.state === 'ready') { if (!src.busy) p3msg(src.done || 'Helper is ready on ' + j.device + (j.vram ? ' (' + j.vram + ' GB)' : '') + '.', 'ok'); } else if (j.state === 'busy' || src.busy) p3msg(j.msg, 'mu'); else p3msg(j.msg, j.state === 'error' ? 'bad' : 'mu');
+    } catch (e) { src.helper = null; if (!src.busy) p3msg('The helper is not running on this PC. Start it with start.bat, then wait a moment.', 'bad'); }
   }
-  setInterval(ping, 3000);
+  setInterval(ping, 1000);
+  const b64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(f); });
   async function makePhoto() {
-    if (!src.p3file) { p3msg('Choose a photo first.', 'bad'); return; } if (src.busy) return; src.busy = true; const t0 = Date.now(), iv = setInterval(() => p3msg('Making the model... ' + Math.round((Date.now() - t0) / 1000) + ' s (the first one is slowest)', 'mu'), 500);
-    try { const r = await fetch(HELPER + '/make?res=' + P.res + '&rembg=' + (P.rembg ? 1 : 0), { method: 'POST', body: src.p3file }); if (!r.ok) { let m = 'The helper could not make a model.'; try { m = (await r.json()).error || m; } catch (e) { } throw new Error(m); }
-      const txt = await r.text(); src.model = { t: window.MODEL.parse(new TextEncoder().encode(txt).buffer, 'photo.obj'), name: src.p3file.name }; p3msg('Done in ' + Math.round((Date.now() - t0) / 1000) + ' s. Turn it with "Which way is up" if it is on its side.', 'ok'); regen();
-    } catch (e) { p3msg(e.name === 'TypeError' ? 'Could not reach the helper. Is start.bat running?' : e.message, 'bad'); } finally { clearInterval(iv); src.busy = false; }
+    if (!src.views.front) { p3msg('Add a front photo first.', 'bad'); return; } if (src.busy) return; src.busy = true; src.done = ''; const t0 = Date.now();
+    try { const views = {}; for (const k of Object.keys(src.views)) views[k] = await b64(src.views[k].file);
+      const r = await fetch(HELPER + '/make', { method: 'POST', body: JSON.stringify({ engine: P.engine, quality: P.quality, smooth: P.smooth, strip: P.rembg, views }) });
+      if (!r.ok) { let m = 'The helper could not make a model.'; try { m = (await r.json()).error || m; } catch (e) { } throw new Error(m); }
+      const info = JSON.parse(r.headers.get('X-Info') || '{}'), buf = await r.arrayBuffer(); src.model = { t: window.MODEL.parse(buf, 'photo.stl'), name: 'photo' }; if (info.up) P.up = info.up; renderControls();
+      src.done = 'Done in ' + Math.round((Date.now() - t0) / 1000) + ' s. Turn it with "Which way is up" if it is on its side.'; p3msg(src.done, 'ok'); const e = $('#p3info'); if (e) e.textContent = (info.engine || '') + ': ' + (info.faces || 0).toLocaleString() + ' triangles, ' + (info.watertight ? 'a solid closed shape' : 'small gaps (the slicer will usually repair these)') + (info.dropped_pieces ? ', ' + info.dropped_pieces + ' floating bits removed' : '') + '.';
+      regen();
+    } catch (e) { p3msg(e.name === 'TypeError' ? 'Could not reach the helper. Is start.bat running?' : e.message, 'bad'); } finally { src.busy = false; }
   }
-  document.addEventListener('change', e => { const t = e.target; if (t.id === 'mdl' && t.files[0]) loadModelFile(t.files[0]); else if (t.id === 'p3pic' && t.files[0]) { src.p3file = t.files[0]; renderControls(); ping(); } });
+  document.addEventListener('change', e => { const t = e.target; if (t.id === 'mdl' && t.files[0]) loadModelFile(t.files[0]); else if (t.dataset.view && t.files[0]) setView(t.dataset.view, t.files[0]); });
   document.addEventListener('click', e => { if (e.target.dataset && e.target.dataset.p3) makePhoto(); });
   document.addEventListener('dragover', e => { e.preventDefault(); });
-  document.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer && e.dataTransfer.files[0]; if (!f) return; if (/\.(stl|obj|glb|gltf)$/i.test(f.name)) loadModelFile(f); else if (/^image\//.test(f.type)) { src.p3file = f; if (cur.id !== 'photo3d') setGen('photo3d'); else renderControls(); ping(); } });
+  document.addEventListener('drop', e => { e.preventDefault(); const fs = [...(e.dataTransfer ? e.dataTransfer.files : [])]; if (!fs.length) return; if (/\.(stl|obj|glb|gltf)$/i.test(fs[0].name)) { loadModelFile(fs[0]); return; } const im = fs.filter(f => /^image\//.test(f.type)); if (!im.length) return; if (cur.id !== 'photo3d') setGen('photo3d'); const ks = ['front', 'back', 'left', 'right']; im.slice(0, 4).forEach((f, i) => { if (src.views[ks[i]]) URL.revokeObjectURL(src.views[ks[i]].url); src.views[ks[i]] = { file: f, url: URL.createObjectURL(f) }; }); if (im.length > 1) P.engine = 'hy2mv'; renderControls(); ping(); });
   function loadDemo() { const c = document.createElement('canvas'); c.width = 300; c.height = 300; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 300, 300); x.fillStyle = '#000'; x.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 60 : 130; x.lineTo(150 + r * Math.cos(a), 160 + r * Math.sin(a)); } x.closePath(); x.fill(); const im = new Image(); im.onload = () => { src.img = im; if (cur.inputs.includes('source')) P.mode = 'image'; renderControls(); regen(); }; im.src = c.toDataURL(); }
   $('#printer').innerHTML = PRINTERS.map(p => `<option value="${p.id}" ${p.id === printer.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
   window.P3 = { GEN, setGen, get tris() { return tris; }, get P() { return P; }, src, loadDemo, G };

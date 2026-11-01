@@ -1,4 +1,4 @@
-/* 3DPrintida geometry: every shape is a flat array of triangles [x,y,z, x,y,z, x,y,z, ...] in millimetres, Z up, outward normals (counter-clockwise). */
+/* 3DPrintica geometry: every shape is a flat array of triangles [x,y,z, x,y,z, x,y,z, ...] in millimetres, Z up, outward normals (counter-clockwise). */
 (function () {
   const G = {};
   G.quad = (t, a, b, c, d) => { t.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2], a[0], a[1], a[2], c[0], c[1], c[2], d[0], d[1], d[2]); };
@@ -87,7 +87,7 @@
   G.center = tr => { const s = G.stats(tr), dx = -(s.min[0] + s.max[0]) / 2, dy = -(s.min[1] + s.max[1]) / 2, dz = -s.min[2], o = new Float32Array(tr.length); for (let i = 0; i < tr.length; i += 3) { o[i] = tr[i] + dx; o[i + 1] = tr[i + 1] + dy; o[i + 2] = tr[i + 2] + dz; } return o; };
   /* ---- export ---- */
   G.stl = (tr, name) => {
-    const n = tr.length / 9, buf = new ArrayBuffer(84 + n * 50), v = new DataView(buf), hd = ('3DPrintida ' + (name || '')).slice(0, 79); for (let i = 0; i < hd.length; i++) v.setUint8(i, hd.charCodeAt(i)); v.setUint32(80, n, true);
+    const n = tr.length / 9, buf = new ArrayBuffer(84 + n * 50), v = new DataView(buf), hd = ('3DPrintica ' + (name || '')).slice(0, 79); for (let i = 0; i < hd.length; i++) v.setUint8(i, hd.charCodeAt(i)); v.setUint32(80, n, true);
     for (let t = 0, o = 84; t < n; t++, o += 50) { const b = t * 9, ux = tr[b + 3] - tr[b], uy = tr[b + 4] - tr[b + 1], uz = tr[b + 5] - tr[b + 2], vx = tr[b + 6] - tr[b], vy = tr[b + 7] - tr[b + 1], vz = tr[b + 8] - tr[b + 2]; let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l; [nx, ny, nz].forEach((x, k) => v.setFloat32(o + k * 4, x, true)); for (let k = 0; k < 9; k++) v.setFloat32(o + 12 + k * 4, tr[b + k], true); }
     return new Blob([buf], { type: 'model/stl' });
   };
@@ -104,7 +104,7 @@
     const map = new Map(), vs = [], ts = []; const key = (x, y, z) => Math.round(x * 1e4) + ',' + Math.round(y * 1e4) + ',' + Math.round(z * 1e4);
     for (let i = 0; i < tr.length; i += 3) { const k = key(tr[i], tr[i + 1], tr[i + 2]); let id = map.get(k); if (id === undefined) { id = vs.length / 3; map.set(k, id); vs.push(+tr[i].toFixed(4), +tr[i + 1].toFixed(4), +tr[i + 2].toFixed(4)); } ts.push(id); }
     let v = '', t = ''; for (let i = 0; i < vs.length; i += 3) v += '<vertex x="' + vs[i] + '" y="' + vs[i + 1] + '" z="' + vs[i + 2] + '"/>'; for (let i = 0; i < ts.length; i += 3) if (ts[i] !== ts[i + 1] && ts[i + 1] !== ts[i + 2] && ts[i] !== ts[i + 2]) t += '<triangle v1="' + ts[i] + '" v2="' + ts[i + 1] + '" v3="' + ts[i + 2] + '"/>';
-    const model = '<?xml version="1.0" encoding="UTF-8"?><model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><metadata name="Title">' + (name || 'Part').replace(/[<>&"]/g, '') + '</metadata><metadata name="Application">3DPrintida</metadata><resources><object id="1" type="model"><mesh><vertices>' + v + '</vertices><triangles>' + t + '</triangles></mesh></object></resources><build><item objectid="1"/></build></model>';
+    const model = '<?xml version="1.0" encoding="UTF-8"?><model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><metadata name="Title">' + (name || 'Part').replace(/[<>&"]/g, '') + '</metadata><metadata name="Application">3DPrintica</metadata><resources><object id="1" type="model"><mesh><vertices>' + v + '</vertices><triangles>' + t + '</triangles></mesh></object></resources><build><item objectid="1"/></build></model>';
     return zip([{ name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>' }, { name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>' }, { name: '3D/3dmodel.model', data: model }]);
   };
   window.G3 = G;
