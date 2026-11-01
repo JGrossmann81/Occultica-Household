@@ -1,0 +1,60 @@
+name: Occultica VST3
+on:
+  workflow_dispatch:
+  push:
+    paths: ['Plugins/**', '.github/workflows/occultica-vst.yml']
+permissions:
+  contents: write
+jobs:
+  dsp-check:        # the C++ engines must sound identical to the web engines
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Compare C++ and web engines
+        working-directory: Plugins/tests
+        run: |
+          g++ -O2 -std=c++17 -o render render.cpp
+          fail=0
+          for p in "minica 9" "minica 0" "minica 2" "minica 4" "rhodica 8" "rhodica 4" "rhodica 3"; do
+            set -- $p; ./render $1 $2 c.f32; node render.js $1 $2 j.f32
+            python3 compare.py c.f32 j.f32 | tee out.txt
+            python3 - <<'PY' || fail=1
+          import re
+          m=re.search(r'rel ([0-9.]+)', open('out.txt').read()); assert float(m.group(1))<1e-4
+          PY
+          done
+          exit $fail
+  build:
+    needs: dsp-check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S Plugins -B build -G "Visual Studio 17 2022" -A x64
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+      - name: Collect
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force pack/VST3, pack/Standalone | Out-Null
+          Get-ChildItem build -Recurse -Directory -Filter *.vst3 | ForEach-Object { Copy-Item $_.FullName pack/VST3 -Recurse }
+          Get-ChildItem build -Recurse -Filter *.exe | Where-Object { $_.FullName -match 'Standalone' } | ForEach-Object { Copy-Item $_.FullName pack/Standalone }
+          @"
+          Occultica instruments (VST3)
+          1. Copy the .vst3 files from the VST3 folder to C:\Program Files\Common Files\VST3
+          2. Open your music program and rescan plugins.
+          The Standalone folder has the same instruments as small programs you can run without a music program (use the on-screen keyboard or a MIDI keyboard).
+          Sound quality (bottom left of each window): Standard, High (2x) or Ultra (4x) oversampling. High is the default.
+          "@ | Set-Content pack/README.txt
+          Compress-Archive -Path pack/* -DestinationPath Occultica-VST3.zip
+          Get-ChildItem pack -Recurse | Select-Object -First 40 FullName
+      - uses: actions/upload-artifact@v4
+        with: { name: Occultica-VST3, path: Occultica-VST3.zip }
+      - name: Publish release
+        shell: bash
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          gh release delete vst-latest -y --cleanup-tag || true
+          gh release create vst-latest Occultica-VST3.zip --title "Occultica VST3 instruments (latest)" --notes "Windows VST3 plugins and standalone programs. Unzip, copy the .vst3 files to C:\Program Files\Common Files\VST3, rescan in your music program."
