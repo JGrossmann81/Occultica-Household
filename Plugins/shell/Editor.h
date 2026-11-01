@@ -2,6 +2,7 @@
 #pragma once
 #include "Processor.h"
 #include "Art.h"
+#include "Display.h"
 
 class OccLookAndFeel : public juce::LookAndFeel_V4 {
 public:
@@ -55,6 +56,7 @@ public:
     qualityBox.addItemList({"Standard", "High (2x)", "Ultra (4x)"}, 1); addAndMakeVisible(qualityBox);
     qualityAtt = std::make_unique<juce::ComboBoxParameterAttachment>(*proc.apvts.getParameter("quality"), qualityBox);
     keys.setKeyWidth(22.f); keys.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, juce::Colour(th.accent).withAlpha(0.7f)); keys.setLowestVisibleKey(36); addAndMakeVisible(keys);
+    if (auto k = OccDisplay::kindFor(th); k != OccDisplay::None) { disp = std::make_unique<OccDisplay>(proc, k); addAndMakeVisible(*disp); }   // Minica / Rhodica / Fantica (and Rev2) get a live panel
     computeLayout(); refreshLabels(); startTimerHz(30);
   }
   ~OccEditor() override { setLookAndFeel(nullptr); }
@@ -95,10 +97,17 @@ private:
   void addControl(int id, juce::ComboBox& box, bool) { fillBox(box, proc.info.specs[(size_t)id]); presetAtt = std::make_unique<juce::ComboBoxParameterAttachment>(*proc.apvts.getParameter(OccProcessor::pid(id)), box); addAndMakeVisible(box); }
   void computeLayout() {
     const int W = 1040, M = 16, gap = 12, knobW = 82, knobH = 96, boxW = 150, boxH = 54; headerH = 128; int x = M, y = headerH + 14, rowH = 0;
+    std::vector<int> sky((size_t)W + 8, 0);
+    if (disp) { disp->setBounds(M, y, W - 2 * M, OccDisplay::kHeight); y += OccDisplay::kHeight + gap; std::fill(sky.begin(), sky.end(), y); }
     for (auto& pn : panels) {
       int nb = 0, nk = 0; for (auto& c : pn.ctls) (c->box ? nb : nk)++;
       int kCols = std::min(nk, 5), bCols = std::min(nb, 2), inner = std::max(kCols * knobW, bCols * (boxW + 6)), pw = std::max(inner + 24, 150);
       int bRows = bCols ? (nb + bCols - 1) / bCols : 0, kRows = kCols ? (nk + kCols - 1) / kCols : 0, ph = 32 + bRows * (boxH + 4) + kRows * knobH + 12;
+      if (disp) {   // panels under a live display are packed into the lowest free spot, so the taller editor does not grow even taller
+        int bx = M, by = 1 << 30; for (int cx = M; cx + pw <= W - M; cx += 4) { int top = 0; for (int i = cx; i < cx + pw; ++i) top = std::max(top, sky[(size_t)i]); if (top < by) { by = top; bx = cx; } }
+        x = bx; y = by; for (int i = bx; i < bx + pw + gap && i < W; ++i) sky[(size_t)i] = by + ph + gap;
+      }
+      else
       if (x + pw > W - M && x > M) { x = M; y += rowH + gap; rowH = 0; }
       pn.r = juce::Rectangle<float>((float)x, (float)y, (float)pw, (float)ph);
       int bi = 0, ki = 0, by = y + 30, ky = by + bRows * (boxH + 4);
@@ -108,6 +117,7 @@ private:
       }
       x += pw + gap; rowH = std::max(rowH, ph);
     }
+    if (disp) { int low = 0; for (int h : sky) low = std::max(low, h); y = low - gap; rowH = 0; }
     int bottom = y + rowH + 14; footerR = juce::Rectangle<float>((float)M, (float)bottom, 400.f, 26.f);
     presetBox.setBounds(70, headerH - 30, 230, 24); qualityBox.setBounds(M + 108, bottom, 140, 24);
     keys.setBounds(M, bottom + 34, W - 2 * M, 64); setSize(W, bottom + 34 + 64 + 14);
@@ -118,6 +128,6 @@ private:
     repaint(0, 0, getWidth(), headerH);
   }
   OccProcessor& proc; const occ::Theme& th; OccLookAndFeel lnf; std::vector<Panel> panels; juce::ComboBox presetBox, qualityBox; std::unique_ptr<juce::ComboBoxParameterAttachment> presetAtt, qualityAtt;
-  juce::MidiKeyboardComponent keys; int headerH = 128, lastPreset = -1; float tsec = 0; juce::Rectangle<float> footerR;
+  std::unique_ptr<OccDisplay> disp; juce::MidiKeyboardComponent keys; int headerH = 128, lastPreset = -1; float tsec = 0; juce::Rectangle<float> footerR;
 };
 inline juce::AudioProcessorEditor* OccProcessor::createEditor() { return new OccEditor(*this); }
