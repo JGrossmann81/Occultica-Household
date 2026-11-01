@@ -17,7 +17,7 @@ jobs:
         run: |
           g++ -O2 -std=c++17 -o render render.cpp
           fail=0
-          for p in "minica 9" "minica 0" "minica 2" "minica 4" "rhodica 8" "rhodica 4" "rhodica 3" "wraithica 0" "wraithica 3" "wraithica 6" "wraithica 9" "additica 0" "additica 5" "additica 9" "grainica 0" "grainica 4" "grainica 8" "fantica 0" "fantica 13" "fantica 33" "fantica 40" "voxica 0" "voxica 5" "voxica 12" "pianica 1" "pianica 6" "reedica 0" "reedica 9" "reedica 17" "brassica 0" "brassica 8" "clavica 1" "clavica 12" "clavica 15" "stringica 0" "stringica 9" "pipica 0" "pipica 13" "percussica 0" "percussica 47" "beachica 4" "beachica 12" "avoidica 3" "avoidica 7" "industrica 3" "industrica 5" "physica 2" "physica 5" "galactica 0" "galactica 7" "galactica 10" "modica 0" "modica 5" "modica 9"; do
+          for p in "minica 9" "minica 0" "minica 2" "minica 4" "rhodica 8" "rhodica 4" "rhodica 3" "wraithica 0" "wraithica 3" "wraithica 6" "wraithica 9" "additica 0" "additica 5" "additica 9" "grainica 0" "grainica 4" "grainica 8" "fantica 0" "fantica 13" "fantica 33" "fantica 40" "voxica 0" "voxica 5" "voxica 12" "pianica 1" "pianica 6" "reedica 0" "reedica 9" "reedica 17" "brassica 0" "brassica 8" "clavica 1" "clavica 12" "clavica 15" "stringica 0" "stringica 9" "pipica 0" "pipica 13" "percussica 0" "percussica 47" "beachica 4" "beachica 12" "avoidica 3" "avoidica 7" "industrica 3" "industrica 5" "physica 2" "physica 5" "galactica 0" "galactica 7" "galactica 10" "modica 0" "modica 9"; do
             set -- $p; ./render $1 $2 c.f32; node render.js $1 $2 j.f32
             python3 compare.py c.f32 j.f32 | tee out.txt
             python3 - <<'PY' || fail=1
