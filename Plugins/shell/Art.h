@@ -93,12 +93,24 @@ inline void drawFantica(Graphics& g, Rectangle<float> r, const occ::Theme& th, f
   for (int i = 0; i < 8; ++i) { auto pad = Rectangle<float>(r.getX() + 16 + i * (r.getWidth() - 32) / 8.f, r.getBottom() - 36, (r.getWidth() - 32) / 8.f - 6, 22); float on = 0.25f + 0.6f * std::max(0.f, std::sin(t * 2.f - i * 0.8f)) * (0.3f + level * 2.f);
     g.setColour(C(th.accent).withAlpha(std::min(1.f, on))); g.fillRoundedRectangle(pad, 4.f); g.setColour(C(th.glow).withAlpha(0.5f)); g.drawRoundedRectangle(pad, 4.f, 1.f); }
 }
+inline void drawVoxica(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
+  g.setGradientFill(juce::ColourGradient(C(0xff3d2040), r.getCentreX(), r.getBottom(), C(0xff0c060d), r.getCentreX(), r.getY(), false)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
+  g.setColour(C(th.accent).withAlpha(0.3f)); g.drawRoundedRectangle(r.reduced(2, 2), 8.f, 1.2f);
+  // a singing mouth: the opening follows the level, with formant peaks drifting across a spectrum envelope behind it
+  float cx = r.getCentreX(), cy = r.getCentreY(); Path env; for (int i = 0; i <= 200; ++i) { float u = i / 200.f, y = 0;
+    for (int k = 0; k < 4; ++k) { float c = 0.12f + 0.2f * k + 0.04f * std::sin(t * (0.7f + k * 0.3f) + k), d = (u - c) / 0.05f; y += std::exp(-d * d) * (1.f - 0.18f * k); }
+    float x = r.getX() + 14 + (r.getWidth() - 28) * u, yy = r.getBottom() - 14 - y * (r.getHeight() * 0.35f) * (0.5f + level * 2.f); if (i == 0) env.startNewSubPath(x, yy); else env.lineTo(x, yy); }
+  g.setColour(C(th.glow).withAlpha(0.7f)); g.strokePath(env, juce::PathStrokeType(1.5f));
+  float open = 6.f + level * 60.f + 6.f * (0.5f + 0.5f * std::sin(t * 2.f)), w = 70.f;
+  Path mouth; mouth.addEllipse(cx - w * 0.5f, cy - open * 0.5f - 8, w, open); g.setColour(C(0xff1a0612)); g.fillPath(mouth); g.setColour(C(th.accent)); g.strokePath(mouth, juce::PathStrokeType(2.4f));
+  g.setColour(C(th.accent).withAlpha(0.35f)); for (int k = 1; k <= 3; ++k) { float rr = w * 0.5f + k * 16.f + std::fmod(t * 14.f, 16.f); g.drawEllipse(cx - rr, cy - 8 - rr * 0.45f, rr * 2, rr * 0.9f, 1.f); }
+}
 inline void drawGeneric(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
   g.setColour(C(0xff000000).withAlpha(0.35f)); g.fillRoundedRectangle(r.reduced(2, 2), 8.f);
   for (int k = 0; k < 3; ++k) { Path p; for (int i = 0; i <= 200; ++i) { float x = r.getX() + 10 + (r.getWidth() - 20) * i / 200.f, y = r.getCentreY() + std::sin(i * 0.12f * (k + 1) + t * (2 + k)) * r.getHeight() * 0.28f * (0.3f + level * 2.f) / (k + 1); if (i == 0) p.startNewSubPath(x, y); else p.lineTo(x, y); }
     g.setColour(C(th.accent).withAlpha(0.7f / (k + 1))); g.strokePath(p, juce::PathStrokeType(1.6f)); }
 }
 inline void drawMotif(Graphics& g, Rectangle<float> r, const occ::Theme& th, float level, float t) {
-  if (th.motif == "minica") drawMinica(g, r, th, level, t); else if (th.motif == "rhodica") drawRhodica(g, r, th, level, t); else if (th.motif == "wraithica") drawWraithica(g, r, th, level, t); else if (th.motif == "additica") drawAdditica(g, r, th, level, t); else if (th.motif == "grainica") drawGrainica(g, r, th, level, t); else if (th.motif == "fantica") drawFantica(g, r, th, level, t); else drawGeneric(g, r, th, level, t);
+  if (th.motif == "minica") drawMinica(g, r, th, level, t); else if (th.motif == "rhodica") drawRhodica(g, r, th, level, t); else if (th.motif == "wraithica") drawWraithica(g, r, th, level, t); else if (th.motif == "additica") drawAdditica(g, r, th, level, t); else if (th.motif == "grainica") drawGrainica(g, r, th, level, t); else if (th.motif == "fantica") drawFantica(g, r, th, level, t); else if (th.motif == "voxica") drawVoxica(g, r, th, level, t); else drawGeneric(g, r, th, level, t);
 }
 }  // namespace occart
